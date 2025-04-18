@@ -1,35 +1,33 @@
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, AsyncMock, Mock
+import json
 from datetime import date
-import requests
+import aiohttp
 from pyMyweblog.client import MyWebLogClient
 
 
-class TestMyWebLogClient(unittest.TestCase):
-    """Test cases for MyWebLogClient."""
+class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
+    """Test cases for MyWebLogClient (aiohttp/async version)."""
 
     def setUp(self):
-        """Set up the test client."""
+        """Set up test parameters."""
         self.username = "test_user"
         self.password = "test_pass"
-        self.base_url = "https://api.myweblog.se/api_mobile.php?version=2.0."
-        self.client = MyWebLogClient(
-            username=self.username,
-            password=self.password,
-            base_url=self.base_url
-        )
+        self.app_token = "test_token"
+        self.ac_id = "TBD"
+        self.base_url = "https://api.myweblog.se/api_mobile.php?version=2.0.3"
 
-    def tearDown(self):
-        """Clean up after each test."""
-        self.client.close()
+    async def asyncTearDown(self):
+        """Clean up after each test (no manual session handling needed)."""
+        pass
 
-    @patch("requests.Session.post")
-    def test_get_objects_success(self, mock_post):
+    @patch("aiohttp.ClientSession.post")
+    async def test_get_objects_success(self, mock_post):
         """Test successful retrieval of objects."""
         # Mock API response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.text = AsyncMock(return_value=json.dumps({
             "objects": [
                 {
                     "ID": 1,
@@ -39,11 +37,19 @@ class TestMyWebLogClient(unittest.TestCase):
                     "model": "Cessna 172"
                 }
             ]
-        }
-        mock_post.return_value = mock_response
+        }))
+        # Mock raise_for_status to avoid RuntimeWarning
+        mock_response.raise_for_status = Mock()
+        mock_post.return_value.__aenter__.return_value = mock_response
 
-        # Call method
-        result = self.client.getObjects()
+        # Use context manager to handle session
+        async with MyWebLogClient(
+            self.username,
+            self.password,
+            self.app_token,
+            self.base_url
+        ) as client:
+            result = await client.getObjects()
 
         # Verify response
         self.assertEqual(
@@ -63,30 +69,30 @@ class TestMyWebLogClient(unittest.TestCase):
 
         # Verify request
         mock_post.assert_called_once_with(
-            f"{self.base_url}/getObjects",
-            json={
+            self.base_url,
+            data={
                 "includeObjectThumbnail": 0,
-                "qtype": "getObjects",
+                "qtype": "GetObjects",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
-                "returnType": "json",
+                "returnType": "JSON",
                 "charset": "UTF-8",
-                "app_token": "mySecretApptoken",
+                "app_token": self.app_token,
                 "language": "se"
             }
         )
 
-    @patch("requests.Session.post")
-    def test_get_bookings_success(self, mock_post):
+    @patch("aiohttp.ClientSession.post")
+    async def test_get_bookings_success(self, mock_post):
         """Test successful retrieval of bookings with default parameters."""
         # Mock API response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.text = AsyncMock(return_value=json.dumps({
             "bookings": [
                 {
                     "ID": 101,
-                    "ac_id": "mySecretAcId",
+                    "ac_id": self.ac_id,
                     "regnr": "SE-ABC",
                     "bStart": "2025-04-18 08:00:00",
                     "bEnd": "2025-04-18 10:00:00",
@@ -102,12 +108,19 @@ class TestMyWebLogClient(unittest.TestCase):
                     }
                 }
             }
-        }
-        mock_post.return_value = mock_response
+        }))
+        mock_response.raise_for_status = Mock()  # Mock raise_for_status
+        mock_post.return_value.__aenter__.return_value = mock_response
 
-        # Call method
-        today = date.today().strftime("%Y-%m-%d")
-        result = self.client.getBookings(mybookings=True, includeSun=True)
+        # Use context manager to handle session
+        async with MyWebLogClient(
+            self.username,
+            self.password,
+            self.app_token,
+            self.base_url
+        ) as client:
+            today = date.today().strftime("%Y-%m-%d")
+            result = await client.getBookings(mybookings=True, includeSun=True)
 
         # Verify response
         self.assertEqual(
@@ -116,7 +129,7 @@ class TestMyWebLogClient(unittest.TestCase):
                 "bookings": [
                     {
                         "ID": 101,
-                        "ac_id": "mySecretAcId",
+                        "ac_id": self.ac_id,
                         "regnr": "SE-ABC",
                         "bStart": "2025-04-18 08:00:00",
                         "bEnd": "2025-04-18 10:00:00",
@@ -137,46 +150,55 @@ class TestMyWebLogClient(unittest.TestCase):
 
         # Verify request
         mock_post.assert_called_once_with(
-            f"{self.base_url}/getBookings",
-            json={
-                "ac_id": "mySecretAcId",
+            self.base_url,
+            data={
+                "ac_id": self.ac_id,
                 "mybookings": 1,
                 "from_date": today,
                 "to_date": today,
                 "includeSun": 1,
-                "qtype": "getBookings",
+                "qtype": "GetBookings",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
-                "returnType": "json",
+                "returnType": "JSON",
                 "charset": "UTF-8",
-                "app_token": "mySecretApptoken",
+                "app_token": self.app_token,
                 "language": "se"
             }
         )
 
-    @patch("requests.Session.post")
-    def test_get_bookings_no_sun_data(self, mock_post):
+    @patch("aiohttp.ClientSession.post")
+    async def test_get_bookings_no_sun_data(self, mock_post):
         """Test retrieval of bookings with includeSun=False."""
         # Mock API response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.text = AsyncMock(return_value=json.dumps({
             "bookings": [
                 {
                     "ID": 102,
-                    "ac_id": "mySecretAcId",
+                    "ac_id": self.ac_id,
                     "regnr": "SE-XYZ",
                     "bStart": "2025-04-18 09:00:00",
                     "bEnd": "2025-04-18 11:00:00",
                     "fullname": "Test User"
                 }
             ]
-        }
-        mock_post.return_value = mock_response
+        }))
+        mock_response.raise_for_status = Mock()  # Mock raise_for_status
+        mock_post.return_value.__aenter__.return_value = mock_response
 
-        # Call method
-        today = date.today().strftime("%Y-%m-%d")
-        result = self.client.getBookings(mybookings=False, includeSun=False)
+        # Use context manager to handle session
+        async with MyWebLogClient(
+            self.username,
+            self.password,
+            self.app_token,
+            self.base_url
+        ) as client:
+            today = date.today().strftime("%Y-%m-%d")
+            result = await client.getBookings(
+                mybookings=False, includeSun=False
+            )
 
         # Verify response
         self.assertEqual(
@@ -185,7 +207,7 @@ class TestMyWebLogClient(unittest.TestCase):
                 "bookings": [
                     {
                         "ID": 102,
-                        "ac_id": "mySecretAcId",
+                        "ac_id": self.ac_id,
                         "regnr": "SE-XYZ",
                         "bStart": "2025-04-18 09:00:00",
                         "bEnd": "2025-04-18 11:00:00",
@@ -197,59 +219,83 @@ class TestMyWebLogClient(unittest.TestCase):
 
         # Verify request
         mock_post.assert_called_once_with(
-            f"{self.base_url}/getBookings",
-            json={
-                "ac_id": "mySecretAcId",
+            self.base_url,
+            data={
+                "ac_id": self.ac_id,
                 "mybookings": 0,
                 "from_date": today,
                 "to_date": today,
                 "includeSun": 0,
-                "qtype": "getBookings",
+                "qtype": "GetBookings",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
-                "returnType": "json",
+                "returnType": "JSON",
                 "charset": "UTF-8",
-                "app_token": "mySecretApptoken",
+                "app_token": self.app_token,
                 "language": "se"
             }
         )
 
-    @patch("requests.Session.post")
-    def test_myweblog_post_failure(self, mock_post):
+    @patch("aiohttp.ClientSession.post")
+    async def test_myweblog_post_failure(self, mock_post):
         """Test handling of HTTP request failure."""
         # Mock API failure
-        mock_response = Mock()
-        mock_response.status_code = 400
-        mock_response.raise_for_status.side_effect = requests.HTTPError(
-            "Bad Request"
+        mock_response = AsyncMock()
+        mock_response.status = 400
+        mock_response.text = AsyncMock(return_value="Bad Request")
+        mock_response.raise_for_status = Mock(
+            side_effect=aiohttp.ClientResponseError(
+                request_info=Mock(),
+                history=(),
+                status=400,
+                message="Bad Request"
+            )
         )
-        mock_post.return_value = mock_response
+        mock_post.return_value.__aenter__.return_value = mock_response
 
-        # Verify exception
-        with self.assertRaises(requests.HTTPError):
-            self.client.getObjects()
+        # Use context manager to handle session
+        async with MyWebLogClient(
+            self.username,
+            self.password,
+            self.app_token,
+            self.base_url
+        ) as client:
+            with self.assertRaises(aiohttp.ClientResponseError):
+                await client.getObjects()
 
-    def test_close(self):
+    @patch("aiohttp.ClientSession")
+    async def test_close(self, mock_session):
         """Test session closure."""
-        with patch.object(self.client.session, "close") as mock_close:
-            self.client.close()
-            mock_close.assert_called_once()
-
-    @patch("requests.Session")
-    def test_context_manager(self, mock_session):
-        """Test context manager functionality."""
-        # Create a mock session instance
         mock_session_instance = mock_session.return_value
-        mock_session_instance.close = Mock()
+        mock_session_instance.close = AsyncMock()
 
-        # Use context manager
-        with MyWebLogClient(
-            self.username, self.password, self.base_url
+        async with MyWebLogClient(
+            self.username,
+            self.password,
+            self.app_token,
+            self.base_url
+        ) as client:
+            pass  # No explicit close call; rely on context manager
+
+        mock_session_instance.close.assert_awaited_once()
+        # Verify session is None after closure
+        self.assertIsNone(client.session)
+
+    @patch("aiohttp.ClientSession")
+    async def test_context_manager(self, mock_session):
+        """Test context manager functionality."""
+        mock_session_instance = mock_session.return_value
+        mock_session_instance.close = AsyncMock()
+
+        async with MyWebLogClient(
+            self.username,
+            self.password,
+            self.app_token,
+            self.base_url
         ) as client:
             self.assertIsInstance(client, MyWebLogClient)
 
-        # Verify that close was called
-        mock_session_instance.close.assert_called_once()
+        mock_session_instance.close.assert_awaited_once()
 
 
 if __name__ == "__main__":
