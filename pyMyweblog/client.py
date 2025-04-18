@@ -176,6 +176,25 @@ class MyWebLogClient:
         }
         return await self._myWeblogPost("GetBookings", data)
 
+    async def getBalance(self) -> Dict[str, Any]:
+        """Get the balance of the current user from the MyWebLog API.
+
+        Returns:
+            Dict[str, Any]: Response from the API.
+            Output example:
+            {
+                'Fornamn': str,
+                'Partikel': str,
+                'Efternamn': str,
+                'fullname': str,
+                'Balance': float,
+                'currency_symbol': str,
+                'int_curr_symbol': str
+            }
+        """
+        data = {}
+        return await self._myWeblogPost("GetBalance", data)
+
     async def close(self) -> None:
         """Close the HTTP session."""
         if self.session:

@@ -237,6 +237,58 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         )
 
     @patch("aiohttp.ClientSession.post")
+    async def test_get_balance_success(self, mock_post):
+        """Test successful retrieval of user balance."""
+        # Mock API response
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.text = AsyncMock(return_value=json.dumps({
+            "Fornamn": "Test",
+            "Partikel": "",
+            "Efternamn": "User",
+            "fullname": "Test User",
+            "Balance": 1500.75,
+            "currency_symbol": "SEK",
+            "int_curr_symbol": "kr"
+        }))
+        mock_response.raise_for_status = Mock()  # Mock raise_for_status
+        mock_post.return_value.__aenter__.return_value = mock_response
+
+        # Use context manager to handle session
+        async with MyWebLogClient(
+            self.username, self.password, self.app_token, self.base_url
+        ) as client:
+            result = await client.getBalance()
+
+        # Verify response
+        self.assertEqual(
+            result,
+            {
+                "Fornamn": "Test",
+                "Partikel": "",
+                "Efternamn": "User",
+                "fullname": "Test User",
+                "Balance": 1500.75,
+                "currency_symbol": "SEK",
+                "int_curr_symbol": "kr"
+            }
+        )
+
+        # Verify request
+        mock_post.assert_called_once_with(
+            self.base_url,
+            data={
+                "qtype": "GetBalance",
+                "mwl_u": self.username,
+                "mwl_p": self.password,
+                "returnType": "JSON",
+                "charset": "UTF-8",
+                "app_token": self.app_token,
+                "language": "se"
+            }
+        )
+
+    @patch("aiohttp.ClientSession.post")
     async def test_myweblog_post_failure(self, mock_post):
         """Test handling of HTTP request failure."""
         # Mock API failure

@@ -27,6 +27,10 @@ async def test_get_objects(
             print("Objects retrieved from MyWebLog API:")
             pprint(result, indent=2)
 
+            result = await client.getBalance()
+            print("Objects retrieved from MyWebLog API:")
+            pprint(result, indent=2)
+
     except aiohttp.ClientResponseError as e:
         # Hantera HTTP-fel (t.ex. 401, 403, 404)
         print(f"HTTP Error: {e}")
