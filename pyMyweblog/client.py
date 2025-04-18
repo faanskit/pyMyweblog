@@ -81,13 +81,55 @@ class MyWebLogClient:
 
         Returns:
             Dict[str, Any]: Response from the API.
-            Output:
-                ID (int)
-                regnr (string)
-                club_id (int)
-                clubname (string)
-                model (string)
-                objectThumbnail (jpg, 150x100 px)
+            Output example:
+            {
+                'APIVersion': str,
+                'qType': str,
+                'result': {
+                'Object': [
+                    {
+                    'ID': str,
+                    'regnr': str,
+                    'model': str,
+                    'club_id': str,
+                    'clubname': str,
+                    'bobject_cat': str (optional),
+                    'comment': str (optional),
+                    'activeRemarks': [
+                        {
+                        'remarkID': str,
+                        'remarkBy': str,
+                        'remarkCategory': str,
+                        'remarkDate': str,
+                        'remarkText': str
+                        },
+                        ...
+                    ] (optional),
+                    'flightData': {
+                        'initial': {...},
+                        'logged': {...},
+                        'total': {...}
+                    },
+                    'ftData': {...},
+                    'maintTimeDate': {...} (optional)
+                    },
+                    ...
+                ],
+                'Result': str
+                }
+            }
+            Notable fields per object:
+            - ID (str): Object ID
+            - regnr (str): Registration or name
+            - model (str): Model/type
+            - club_id (str): Club ID
+            - clubname (str): Club name
+            - bobject_cat (str, optional): Object category
+            - comment (str, optional): Comment/description
+            - activeRemarks (list, optional): List of active remarks
+            - flightData (dict): Flight time and usage data
+            - ftData (dict): Flight totals
+            - maintTimeDate (dict, optional): Maintenance info
         """
         data = {
             "includeObjectThumbnail": 0
