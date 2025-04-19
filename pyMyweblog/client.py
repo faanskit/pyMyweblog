@@ -40,9 +40,7 @@ class MyWebLogClient:
             await self.session.close()
             self.session = None
 
-    async def _myWeblogPost(
-        self, qtype: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _myWeblogPost(self, qtype: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Send a POST request to the MyWebLog API.
 
         Args:
@@ -64,7 +62,7 @@ class MyWebLogClient:
             "charset": "UTF-8",
             "app_token": self.app_token,
             "language": "se",
-            **data
+            **data,
         }
         async with self.session.post(self.base_url, data=payload) as resp:
             resp.raise_for_status()
@@ -127,9 +125,7 @@ class MyWebLogClient:
             - ftData (dict): Flight totals
             - maintTimeDate (dict, optional): Maintenance info
         """
-        data = {
-            "includeObjectThumbnail": 0
-        }
+        data = {"includeObjectThumbnail": 0}
         return await self._myWeblogPost("GetObjects", data)
 
     async def getBookings(
@@ -168,7 +164,7 @@ class MyWebLogClient:
             "mybookings": int(mybookings),
             "from_date": today,
             "to_date": today,
-            "includeSun": int(includeSun)
+            "includeSun": int(includeSun),
         }
         return await self._myWeblogPost("GetBookings", data)
 

@@ -9,6 +9,10 @@ description = "A Python library for interacting with the MyWebLog API"
 readme = "README.md"
 authors = [{ name = "Marcus Karlsson", email = "marcus.karlsson@usa.net" }]
 license = { file = "LICENSE" }
+requires-python = ">=3.8"
+dependencies = [
+    "aiohttp>=3.8.0"
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -19,15 +23,20 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries :: Python Modules"
 ]
-requires-python = ">=3.8"
-dependencies = ["aiohttp>=3.8.0"]
 
 [project.urls]
 Homepage = "https://github.com/faanskit/pyMyweblog"
 Repository = "https://github.com/faanskit/pyMyweblog"
 Issues = "https://github.com/faanskit/pyMyweblog/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "flake8",
+    "black"
+]
 
 [tool.setuptools.packages.find]
 include = ["pyMyweblog*"]

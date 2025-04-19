@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install black flake8 pytest
+        pip install .[dev]
 
     - name: Autoformat code with black
       run: black .
@@ -25,4 +25,5 @@ jobs:
       run: flake8 .
 
     - name: Run tests
-      run: pytest tests/
+      run: pytest --ignore=scripts/test_get_objects.py tests/
+

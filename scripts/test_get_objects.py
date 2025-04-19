@@ -13,11 +13,7 @@ dotenv.load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-async def test_get_objects(
-    username: str,
-    password: str,
-    app_token: str
-) -> None:
+async def test_get_objects(username: str, password: str, app_token: str) -> None:
     """Test fetching objects from MyWebLog API and print the result."""
     try:
         async with MyWebLogClient(
@@ -58,6 +54,8 @@ async def test_get_objects(
     finally:
         # client.close() is not needed because 'async with' handles cleanup
         pass
+
+
 if __name__ == "__main__":
     # Hämta autentiseringsuppgifter från miljövariabler (ingen default)
     TEST_USERNAME = os.getenv("MYWEBLOG_USERNAME")
@@ -71,8 +69,4 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    asyncio.run(test_get_objects(
-        TEST_USERNAME,
-        TEST_PASSWORD,
-        TEST_APPTOKEN
-    ))
+    asyncio.run(test_get_objects(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN))

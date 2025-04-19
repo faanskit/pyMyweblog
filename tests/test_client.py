@@ -27,26 +27,28 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=json.dumps({
-            "objects": [
+        mock_response.text = AsyncMock(
+            return_value=json.dumps(
                 {
-                    "ID": 1,
-                    "regnr": "SE-ABC",
-                    "club_id": 123,
-                    "clubname": "Test Club",
-                    "model": "Cessna 172"
+                    "objects": [
+                        {
+                            "ID": 1,
+                            "regnr": "SE-ABC",
+                            "club_id": 123,
+                            "clubname": "Test Club",
+                            "model": "Cessna 172",
+                        }
+                    ]
                 }
-            ]
-        }))
+            )
+        )
         # Mock raise_for_status to avoid RuntimeWarning
         mock_response.raise_for_status = Mock()
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
         async with MyWebLogClient(
-            self.username,
-            self.password,
-            self.app_token
+            self.username, self.password, self.app_token
         ) as client:
             result = await client.getObjects()
 
@@ -60,10 +62,10 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                         "regnr": "SE-ABC",
                         "club_id": 123,
                         "clubname": "Test Club",
-                        "model": "Cessna 172"
+                        "model": "Cessna 172",
                     }
                 ]
-            }
+            },
         )
 
         # Verify request
@@ -77,8 +79,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 "returnType": "JSON",
                 "charset": "UTF-8",
                 "app_token": self.app_token,
-                "language": "se"
-            }
+                "language": "se",
+            },
         )
 
     @patch("aiohttp.ClientSession.post")
@@ -87,35 +89,34 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=json.dumps({
-            "bookings": [
+        mock_response.text = AsyncMock(
+            return_value=json.dumps(
                 {
-                    "ID": 101,
-                    "ac_id": self.ac_id,
-                    "regnr": "SE-ABC",
-                    "bStart": "2025-04-18 08:00:00",
-                    "bEnd": "2025-04-18 10:00:00",
-                    "fullname": "Test User"
+                    "bookings": [
+                        {
+                            "ID": 101,
+                            "ac_id": self.ac_id,
+                            "regnr": "SE-ABC",
+                            "bStart": "2025-04-18 08:00:00",
+                            "bEnd": "2025-04-18 10:00:00",
+                            "fullname": "Test User",
+                        }
+                    ],
+                    "sunData": {
+                        "refAirport": {"name": "Test Airport"},
+                        "dates": {
+                            "2025-04-18": {"sunrise": "06:00", "sunset": "20:00"}
+                        },
+                    },
                 }
-            ],
-            "sunData": {
-                "refAirport": {"name": "Test Airport"},
-                "dates": {
-                    "2025-04-18": {
-                        "sunrise": "06:00",
-                        "sunset": "20:00"
-                    }
-                }
-            }
-        }))
+            )
+        )
         mock_response.raise_for_status = Mock()  # Mock raise_for_status
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
         async with MyWebLogClient(
-            self.username,
-            self.password,
-            self.app_token
+            self.username, self.password, self.app_token
         ) as client:
             today = date.today().strftime("%Y-%m-%d")
             result = await client.getBookings(mybookings=True, includeSun=True)
@@ -131,19 +132,14 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                         "regnr": "SE-ABC",
                         "bStart": "2025-04-18 08:00:00",
                         "bEnd": "2025-04-18 10:00:00",
-                        "fullname": "Test User"
+                        "fullname": "Test User",
                     }
                 ],
                 "sunData": {
                     "refAirport": {"name": "Test Airport"},
-                    "dates": {
-                        "2025-04-18": {
-                            "sunrise": "06:00",
-                            "sunset": "20:00"
-                        }
-                    }
-                }
-            }
+                    "dates": {"2025-04-18": {"sunrise": "06:00", "sunset": "20:00"}},
+                },
+            },
         )
 
         # Verify request
@@ -161,8 +157,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 "returnType": "JSON",
                 "charset": "UTF-8",
                 "app_token": self.app_token,
-                "language": "se"
-            }
+                "language": "se",
+            },
         )
 
     @patch("aiohttp.ClientSession.post")
@@ -171,31 +167,31 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=json.dumps({
-            "bookings": [
+        mock_response.text = AsyncMock(
+            return_value=json.dumps(
                 {
-                    "ID": 102,
-                    "ac_id": self.ac_id,
-                    "regnr": "SE-XYZ",
-                    "bStart": "2025-04-18 09:00:00",
-                    "bEnd": "2025-04-18 11:00:00",
-                    "fullname": "Test User"
+                    "bookings": [
+                        {
+                            "ID": 102,
+                            "ac_id": self.ac_id,
+                            "regnr": "SE-XYZ",
+                            "bStart": "2025-04-18 09:00:00",
+                            "bEnd": "2025-04-18 11:00:00",
+                            "fullname": "Test User",
+                        }
+                    ]
                 }
-            ]
-        }))
+            )
+        )
         mock_response.raise_for_status = Mock()  # Mock raise_for_status
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
         async with MyWebLogClient(
-            self.username,
-            self.password,
-            self.app_token
+            self.username, self.password, self.app_token
         ) as client:
             today = date.today().strftime("%Y-%m-%d")
-            result = await client.getBookings(
-                mybookings=False, includeSun=False
-            )
+            result = await client.getBookings(mybookings=False, includeSun=False)
 
         # Verify response
         self.assertEqual(
@@ -208,10 +204,10 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                         "regnr": "SE-XYZ",
                         "bStart": "2025-04-18 09:00:00",
                         "bEnd": "2025-04-18 11:00:00",
-                        "fullname": "Test User"
+                        "fullname": "Test User",
                     }
                 ]
-            }
+            },
         )
 
         # Verify request
@@ -229,8 +225,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 "returnType": "JSON",
                 "charset": "UTF-8",
                 "app_token": self.app_token,
-                "language": "se"
-            }
+                "language": "se",
+            },
         )
 
     @patch("aiohttp.ClientSession.post")
@@ -239,15 +235,19 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock API response
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=json.dumps({
-            "Fornamn": "Test",
-            "Partikel": "",
-            "Efternamn": "User",
-            "fullname": "Test User",
-            "Balance": 1500.75,
-            "currency_symbol": "SEK",
-            "int_curr_symbol": "kr"
-        }))
+        mock_response.text = AsyncMock(
+            return_value=json.dumps(
+                {
+                    "Fornamn": "Test",
+                    "Partikel": "",
+                    "Efternamn": "User",
+                    "fullname": "Test User",
+                    "Balance": 1500.75,
+                    "currency_symbol": "SEK",
+                    "int_curr_symbol": "kr",
+                }
+            )
+        )
         mock_response.raise_for_status = Mock()  # Mock raise_for_status
         mock_post.return_value.__aenter__.return_value = mock_response
 
@@ -267,8 +267,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 "fullname": "Test User",
                 "Balance": 1500.75,
                 "currency_symbol": "SEK",
-                "int_curr_symbol": "kr"
-            }
+                "int_curr_symbol": "kr",
+            },
         )
 
         # Verify request
@@ -281,8 +281,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 "returnType": "JSON",
                 "charset": "UTF-8",
                 "app_token": self.app_token,
-                "language": "se"
-            }
+                "language": "se",
+            },
         )
 
     @patch("aiohttp.ClientSession.post")
@@ -294,19 +294,14 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(return_value="Bad Request")
         mock_response.raise_for_status = Mock(
             side_effect=aiohttp.ClientResponseError(
-                request_info=Mock(),
-                history=(),
-                status=400,
-                message="Bad Request"
+                request_info=Mock(), history=(), status=400, message="Bad Request"
             )
         )
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
         async with MyWebLogClient(
-            self.username,
-            self.password,
-            self.app_token
+            self.username, self.password, self.app_token
         ) as client:
             with self.assertRaises(aiohttp.ClientResponseError):
                 await client.getObjects()
@@ -318,9 +313,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_session_instance.close = AsyncMock()
 
         async with MyWebLogClient(
-            self.username,
-            self.password,
-            self.app_token
+            self.username, self.password, self.app_token
         ) as client:
             pass  # No explicit close call; rely on context manager
 
@@ -335,9 +328,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_session_instance.close = AsyncMock()
 
         async with MyWebLogClient(
-            self.username,
-            self.password,
-            self.app_token
+            self.username, self.password, self.app_token
         ) as client:
             self.assertIsInstance(client, MyWebLogClient)
 
