@@ -12,7 +12,6 @@ class MyWebLogClient:
         username: str,
         password: str,
         app_token: str,
-        base_url: str = "https://api.myweblog.se/api_mobile.php?version=2.0.3"
     ):
         """Initialize the MyWebLog client.
 
@@ -20,15 +19,12 @@ class MyWebLogClient:
             username (str): Username for authentication.
             password (str): Password for authentication.
             app_token (str): Application token for API access.
-            ac_id (str): Aircraft ID for API requests.
-            base_url (str): Base URL for the MyWebLog API
-            (default: https://api.myweblog.se/api_mobile.php?version=2.0.3).
         """
         self.username = username
         self.password = password
         self.app_token = app_token
         self.ac_id = "TBD"
-        self.base_url = base_url.rstrip("/")
+        self.base_url = "https://api.myweblog.se/api_mobile.php?version=2.0.3"
         self.session = None
         print(
             f"Connecting to MyWebLog API at {self.base_url} "

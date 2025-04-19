@@ -4,6 +4,10 @@ import os
 from pprint import pprint
 import aiohttp
 from pyMyweblog.client import MyWebLogClient
+import dotenv
+
+# Ladda miljövariabler från .env-filen
+dotenv.load_dotenv()
 
 # Lägg till projektets rotmapp till sys.path (för lokal utveckling)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -12,8 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 async def test_get_objects(
     username: str,
     password: str,
-    app_token: str,
-    base_url: str
+    app_token: str
 ) -> None:
     """Test fetching objects from MyWebLog API and print the result."""
     try:
@@ -21,7 +24,6 @@ async def test_get_objects(
             username,
             password,
             app_token,
-            base_url
         ) as client:
             result = await client.getObjects()
             print("Objects retrieved from MyWebLog API:")
@@ -57,17 +59,20 @@ async def test_get_objects(
         # client.close() is not needed because 'async with' handles cleanup
         pass
 if __name__ == "__main__":
-    # Hämta autentiseringsuppgifter från miljövariabler
-    TEST_USERNAME = os.getenv("MYWEBLOG_USERNAME", "51-10208")
-    TEST_PASSWORD = os.getenv("MYWEBLOG_PASSWORD", "Lillkuk!0")
-    TEST_APPTOKEN = os.getenv("MYWEBLOG_APPTOKEN", "uuJH67Frw42s545!!MaKa!")
-    TEST_BASE_URL = os.getenv(
-        "MYWEBLOG_BASE_URL",
-        "https://api.myweblog.se/api_mobile.php?version=2.0.3")
+    # Hämta autentiseringsuppgifter från miljövariabler (ingen default)
+    TEST_USERNAME = os.getenv("MYWEBLOG_USERNAME")
+    TEST_PASSWORD = os.getenv("MYWEBLOG_PASSWORD")
+    TEST_APPTOKEN = os.getenv("MYWEBLOG_APPTOKEN")
+
+    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN]):
+        print(
+            "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD, "
+            "MYWEBLOG_APPTOKEN) måste vara satta i .env-filen."
+        )
+        sys.exit(1)
 
     asyncio.run(test_get_objects(
         TEST_USERNAME,
         TEST_PASSWORD,
-        TEST_APPTOKEN,
-        TEST_BASE_URL
+        TEST_APPTOKEN
     ))

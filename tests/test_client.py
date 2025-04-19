@@ -46,8 +46,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username,
             self.password,
-            self.app_token,
-            self.base_url
+            self.app_token
         ) as client:
             result = await client.getObjects()
 
@@ -116,8 +115,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username,
             self.password,
-            self.app_token,
-            self.base_url
+            self.app_token
         ) as client:
             today = date.today().strftime("%Y-%m-%d")
             result = await client.getBookings(mybookings=True, includeSun=True)
@@ -192,8 +190,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username,
             self.password,
-            self.app_token,
-            self.base_url
+            self.app_token
         ) as client:
             today = date.today().strftime("%Y-%m-%d")
             result = await client.getBookings(
@@ -256,7 +253,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
 
         # Use context manager to handle session
         async with MyWebLogClient(
-            self.username, self.password, self.app_token, self.base_url
+            self.username, self.password, self.app_token
         ) as client:
             result = await client.getBalance()
 
@@ -309,8 +306,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username,
             self.password,
-            self.app_token,
-            self.base_url
+            self.app_token
         ) as client:
             with self.assertRaises(aiohttp.ClientResponseError):
                 await client.getObjects()
@@ -324,8 +320,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username,
             self.password,
-            self.app_token,
-            self.base_url
+            self.app_token
         ) as client:
             pass  # No explicit close call; rely on context manager
 
@@ -342,8 +337,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username,
             self.password,
-            self.app_token,
-            self.base_url
+            self.app_token
         ) as client:
             self.assertIsInstance(client, MyWebLogClient)
 
