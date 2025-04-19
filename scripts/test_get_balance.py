@@ -13,15 +13,15 @@ dotenv.load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-async def test_get_balance(username: str, password: str, app_token: str) -> None:
-    """Test fetching balance from MyWebLog API and print the result."""
+async def test_get_objects(username: str, password: str, app_token: str) -> None:
+    """Test fetching objects from MyWebLog API and print the result."""
     try:
         async with MyWebLogClient(
             username,
             password,
             app_token,
         ) as client:
-            result = await client.getObjects()
+            result = await client.getBalance()
             print("Objects retrieved from MyWebLog API:")
             pprint(result, indent=2)
 
@@ -65,4 +65,4 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    asyncio.run(test_get_balance(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN))
+    asyncio.run(test_get_objects(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN))

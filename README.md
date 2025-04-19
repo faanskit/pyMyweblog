@@ -13,7 +13,7 @@ pip install pyMyweblog
 Alternatively, for local development, clone the repository and install it in editable mode:
 
 ```bash
-git clone https://github.com/yourusername/pyMyweblog.git
+git clone https://github.com/faanskit/pyMyweblog.git
 cd pyMyweblog
 pip install -e .
 ```
@@ -21,9 +21,8 @@ pip install -e .
 ## Prerequisites
 
 To use the library, you need:
-- A valid MyWebLog API username and password.
-- The MyWebLog API base URL (e.g., `https://api.myweblog.se/api_mobile.php?version=2.0.3`).
-- Optionally, a valid `app_token` and `ac_id` (currently hardcoded in `client.py`).
+- A valid MyWebLog username and password.
+- A valid `app_token` for MyWebLog [Mobile API](https://api.myweblog.se/index.php?page=mobile)
 
 ## Usage
 
@@ -38,7 +37,7 @@ from pyMyweblog.client import MyWebLogClient
 client = MyWebLogClient(
     username="your_username",
     password="your_password",
-    base_url="https://api.myweblog.se/api_mobile.php?version=2.0.3"
+    app_token="your_apptoken",
 )
 
 # Fetch objects
@@ -53,7 +52,6 @@ with MyWebLogClient(
     username="your_username",
     password="your_password",
     app_token="your_apptoken",
-    base_url="https://api.myweblog.se/api_mobile.php?version=2.0."
 ) as client:
     objects = client.getObjects()
     print(objects)
@@ -68,7 +66,6 @@ with MyWebLogClient(
     username="your_username",
     password="your_password",
     app_token="your_apptoken",
-    base_url="https://api.myweblog.se/api_mobile.php?version=2.0."
 ) as client:
     bookings = client.getBookings(mybookings=True, includeSun=True)
     print(bookings)
@@ -76,14 +73,13 @@ with MyWebLogClient(
 
 ## Testing the API
 
-A test script is provided to fetch and print objects from the MyWebLog API.
+Before pushing any changes, please follow these steps to ensure everything works locally.
 
 1. **Set environment variables** (recommended for security):
    ```bash
    export MYWEBLOG_USERNAME="your_username"
    export MYWEBLOG_PASSWORD="your_password"
    export MYWEBLOG_APPTOKEN="your_apptoken"
-   export MYWEBLOG_BASE_URL="https://api.myweblog.se/api_mobile.php?version=2.0."
    ```
 
 2. **Run the test script**:
@@ -99,7 +95,7 @@ A test script is provided to fetch and print objects from the MyWebLog API.
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/pyMyweblog.git
+   git clone https://github.com/faanskit/pyMyweblog.git
    cd pyMyweblog
    ```
 
@@ -111,9 +107,36 @@ A test script is provided to fetch and print objects from the MyWebLog API.
 
 3. **Install dependencies**:
    ```bash
-   pip install -e .
-   pip install requests
+   pip install -e .[dev]
    ```
+
+### Running Tests Locally Before Pushing
+
+To ensure your code adheres to the standards and passes tests, follow these steps before you push your changes:
+
+1. **Install dependencies** (if not already done):
+   ```bash
+   pip install -e .[dev]
+   ```
+
+2. **Run format and lint checks**:
+   - **Black**: Automatically formats your code to conform to Python’s PEP 8 style.
+     ```bash
+     black .
+     ```
+
+   - **Flake8**: Lints your code for style issues, such as unused imports or incorrect indentation.
+     ```bash
+     flake8 .
+     ```
+
+3. **Run unit tests**:
+   - **Pytest**: Run all the tests in the `tests/` directory and verify they pass.
+     ```bash
+     pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py
+     ```
+
+   If all tests pass without errors, you're good to go!
 
 ### Running Unit Tests
 
@@ -128,6 +151,23 @@ python -m unittest discover tests
 - The main API client is in `pyMyweblog/client.py`.
 - Update `app_token` and `ac_id` in `MyWebLogClient` with valid values or make them configurable.
 - Add new methods to `MyWebLogClient` for additional API endpoints as needed.
+
+### Running Test Scripts
+
+Test scripts are located in the `scripts/` directory and use `python`.
+
+**Example #1**:
+To test the GetObjects function, you can run this script:
+```bash
+python -m scripts.test_get_objects
+```
+
+**Example #2**:
+To test the GetBalance function, you can run this script:
+```bash
+python -m scripts.test_get_balance
+```
+
 
 ## Contributing
 

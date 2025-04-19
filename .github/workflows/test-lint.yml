@@ -25,5 +25,5 @@ jobs:
       run: flake8 .
 
     - name: Run tests
-      run: pytest --ignore=scripts/test_get_objects.py tests/
+      run: pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py tests/
 
