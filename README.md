@@ -168,6 +168,75 @@ To test the GetBalance function, you can run this script:
 python -m scripts.test_get_balance
 ```
 
+## CI/CD and Publishing to PyPI and TestPyPI
+
+This project uses **GitHub Actions** to automatically build and publish the package to **TestPyPI** and **PyPI**. Two separate workflows are configured:
+
+---
+
+### 🔁 Publishing to TestPyPI
+
+This workflow runs **on every push to `main`** _if_ the commit message contains `[dev-release]`.
+
+#### How to trigger a TestPyPI release:
+
+1. **Update the version in `pyproject.toml`**  
+   Use a development version (ending in `.devN`), for example:
+   ```toml
+   version = "0.2.0.dev1"
+   ```
+
+2. **Commit and push with a trigger message**:
+   ```bash
+   git add pyproject.toml
+   git commit -m "test release 0.2.0.dev1 [dev-release]"
+   git push origin main
+   ```
+
+3. The workflow will run and upload the package to:  
+   [https://test.pypi.org/project/pyMyweblog](https://test.pypi.org/project/pyMyweblog)
+
+---
+
+### 🚀 Publishing to PyPI (Production)
+
+This workflow runs **only when a GitHub Release is published**. Use this for stable releases (i.e., versions without `.dev`).
+
+#### How to publish a production release:
+
+1. **Update the version in `pyproject.toml`**, for example:
+   ```toml
+   version = "0.2.0"
+   ```
+
+2. **Commit and push**:
+   ```bash
+   git add pyproject.toml
+   git commit -m "release 0.2.0"
+   git push origin main
+   ```
+
+3. **Create a GitHub Release**:
+   - Go to [Releases](https://github.com/yourusername/pyMyweblog/releases)
+   - Click **"Draft a new release"**
+   - Tag: `v0.2.0`
+   - Title/message: `Release 0.2.0`
+   - Click **"Publish release"**
+
+4. The workflow will run and upload the package to:  
+   [https://pypi.org/project/pyMyweblog](https://pypi.org/project/pyMyweblog)
+
+---
+
+### 🔐 API Tokens
+
+To enable publishing from CI/CD, you need to configure the following GitHub Secrets:
+
+- `TEST_PYPI_API_TOKEN` – from [TestPyPI](https://test.pypi.org/manage/account/)
+- `PYPI_API_TOKEN` – from [PyPI](https://pypi.org/manage/account/)
+
+Add these under:  
+**GitHub Repo → Settings → Secrets and variables → Actions → New repository secret**
 
 ## Contributing
 
