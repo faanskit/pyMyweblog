@@ -217,7 +217,7 @@ This workflow runs **only when a GitHub Release is published**. Use this for sta
    ```
 
 3. **Create a GitHub Release**:
-   - Go to [Releases](https://github.com/yourusername/pyMyweblog/releases)
+   - Go to [Releases](https://github.com/faanskit/pyMyweblog/releases)
    - Click **"Draft a new release"**
    - Tag: `v0.2.0`
    - Title/message: `Release 0.2.0`
