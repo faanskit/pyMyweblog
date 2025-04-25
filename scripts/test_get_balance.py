@@ -6,6 +6,10 @@ import aiohttp
 from pyMyweblog.client import MyWebLogClient
 import dotenv
 
+# Use WindowsSelectorEventLoopPolicy to avoid "Event loop is closed" error on Windows
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # Ladda miljövariabler från .env-filen
 dotenv.load_dotenv()
 
@@ -13,8 +17,8 @@ dotenv.load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-async def test_get_objects(username: str, password: str, app_token: str) -> None:
-    """Test fetching objects from MyWebLog API and print the result."""
+async def test_get_balance(username: str, password: str, app_token: str) -> None:
+    """Test fetching balance from MyWebLog API and print the result."""
     try:
         async with MyWebLogClient(
             username,
@@ -22,7 +26,7 @@ async def test_get_objects(username: str, password: str, app_token: str) -> None
             app_token,
         ) as client:
             result = await client.getBalance()
-            print("Objects retrieved from MyWebLog API:")
+            print("Balance retrieved from MyWebLog API:")
             pprint(result, indent=2)
 
     except aiohttp.ClientResponseError as e:
@@ -65,4 +69,8 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    asyncio.run(test_get_objects(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN))
+    try:
+        asyncio.run(test_get_balance(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN))
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
+        sys.exit(1)
