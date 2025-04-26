@@ -168,6 +168,12 @@ To test the GetBalance function, you can run this script:
 python -m scripts.test_get_balance
 ```
 
+**Example #3**:
+To test the GetBookings function, you can run this script:
+```bash
+python -m scripts.test_get_bookings
+```
+
 ## CI/CD and Publishing to PyPI and TestPyPI
 
 This project uses **GitHub Actions** to automatically build and publish the package to **TestPyPI** and **PyPI**. Two separate workflows are configured:

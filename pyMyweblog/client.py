@@ -1,7 +1,8 @@
 import aiohttp
 import json
 from typing import Any, Dict
-from datetime import date
+from datetime import date, timedelta
+import sys
 
 
 class MyWebLogClient:
@@ -11,25 +12,22 @@ class MyWebLogClient:
         self,
         username: str,
         password: str,
-        app_token: str,
+        app_token: str = None
     ):
         """Initialize the MyWebLog client.
 
         Args:
             username (str): Username for authentication.
             password (str): Password for authentication.
-            app_token (str): Application token for API access.
         """
+        self.api_version = '2.0.3'
         self.username = username
         self.password = password
         self.app_token = app_token
-        self.ac_id = "TBD"
-        self.base_url = "https://api.myweblog.se/api_mobile.php?version=2.0.3"
+        self.app_secret = "**--hidden--**"
+        self.base_url = f"https://api.myweblog.se/api_mobile.php?version={self.api_version}"
         self.session = None
-        print(
-            f"Connecting to MyWebLog API at {self.base_url} "
-            f"with user {self.username}"
-        )
+        self.token_url = "https://myweblogtoken.netlify.com"
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -54,6 +52,12 @@ class MyWebLogClient:
             raise RuntimeError(
                 "ClientSession is not initialized. Use 'async with' context."
             )
+
+        if self.app_token is None:
+            raise RuntimeError(
+                "App token was not available."
+            )
+
         payload = {
             "qtype": qtype,
             "mwl_u": self.username,
@@ -65,10 +69,36 @@ class MyWebLogClient:
             **data,
         }
         async with self.session.post(self.base_url, data=payload) as resp:
-            resp.raise_for_status()
+            await resp.raise_for_status()
             # API returns text/plain; manually decode as JSON
-            response = await resp.text()
-            return json.loads(response)
+            response_json = await resp.text()
+            response = json.loads(response_json)
+            if response.get('qType') == qtype and response.get('APIVersion') == self.api_version:
+                return response.get('result', {})
+            raise ValueError(f"Unexpected response from API: {response_json}")
+
+    async def obtainAppToken(self) -> None:
+        """Obtain the app token from Netlify and log the request."""
+        if self.app_token is None:
+            async with aiohttp.ClientSession() as netlify_session:
+                # Obtain the app token
+                async with netlify_session.get(
+                    self.token_url, headers={"X-app-secret": self.app_secret}
+                ) as resp:
+                    await resp.raise_for_status()
+                    data = await resp.json()
+                    self.app_token = data.get("app_token")
+
+                # Call getBalance to verify the token
+                result = await self.getBalance()
+
+                # Log the app token request
+                async with netlify_session.post(
+                    self.token_url,
+                    headers={"X-app-secret": self.app_secret},
+                    json=result,
+                ) as resp:
+                    await resp.raise_for_status()
 
     async def getObjects(self) -> Dict[str, Any]:
         """Get objects from the MyWebLog API.
@@ -77,9 +107,6 @@ class MyWebLogClient:
             Dict[str, Any]: Response from the API.
             Output example:
             {
-                'APIVersion': str,
-                'qType': str,
-                'result': {
                 'Object': [
                     {
                     'ID': str,
@@ -109,8 +136,6 @@ class MyWebLogClient:
                     },
                     ...
                 ],
-                'Result': str
-                }
             }
             Notable fields per object:
             - ID (str): Object ID
@@ -129,7 +154,7 @@ class MyWebLogClient:
         return await self._myWeblogPost("GetObjects", data)
 
     async def getBookings(
-        self, mybookings: bool = True, includeSun: bool = True
+        self, airplaneId: str, mybookings: bool = False, includeSun: bool = False
     ) -> Dict[str, Any]:
         """Get bookings from the MyWebLog API.
 
@@ -159,11 +184,12 @@ class MyWebLogClient:
                 sunData (dict): Reference airport data and dates
         """
         today = date.today().strftime("%Y-%m-%d")
+        today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
         data = {
-            "ac_id": self.ac_id,
+            "ac_id": airplaneId,
             "mybookings": int(mybookings),
             "from_date": today,
-            "to_date": today,
+            "to_date": today_plus_tree,
             "includeSun": int(includeSun),
         }
         return await self._myWeblogPost("GetBookings", data)
