@@ -43,18 +43,59 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                                         "remarkCategory": "2",
                                         "remarkDate": "2024-12-31",
                                         "remarkID": "25026",
-                                        "remarkText": "Kraftiga vibrationer efter start, svajande varvtal",
+                                        "remarkText": (
+                                            "Kraftiga vibrationer efter start, "
+                                            "svajande varvtal"
+                                        ),
                                     }
                                 ],
                                 "club_id": "123",
                                 "clubname": "Test Club",
                                 "flightData": {
-                                    "initial": {"airborne": "2854.9833", "block": None, "landings": "10000", "tachtime": "0.40"},
-                                    "logged": {"airborne": "3896.73346", "block": "4655.71658", "landings": "9180", "tachtime": "3962.80000"},
-                                    "total": {"airborne": 6751.71676, "airborneText": "6751:43", "block": 4655.71658, "blockText": "4655:43", "hobbsMeter": "0.0000", "hobbsMeterText": "0.0", "landings": 19180, "landingsText": "19180", "tachoMeter": "6759.1000", "tachoMeterText": "6759.1", "tachtime": 3963.2, "tachtimeText": "3963.2"},
+                                    "initial": {
+                                        "airborne": "2854.9833",
+                                        "block": None,
+                                        "landings": "10000",
+                                        "tachtime": "0.40",
+                                    },
+                                    "logged": {
+                                        "airborne": "3896.73346",
+                                        "block": "4655.71658",
+                                        "landings": "9180",
+                                        "tachtime": "3962.80000",
+                                    },
+                                    "total": {
+                                        "airborne": 6751.71676,
+                                        "airborneText": (
+                                            "6751:43"
+                                        ),
+                                        "block": 4655.71658,
+                                        "blockText": "4655:43",
+                                        "hobbsMeter": "0.0000",
+                                        "hobbsMeterText": "0.0",
+                                        "landings": 19180,
+                                        "landingsText": "19180",
+                                        "tachoMeter": "6759.1000",
+                                        "tachoMeterText": "6759.1",
+                                        "tachtime": 3963.2,
+                                        "tachtimeText": "3963.2",
+                                    },
                                 },
-                                "ftData": {"airborne": "6751.71676", "block": "0", "landings": 19180, "tachometer": "6759.1000", "tachtime": "3963.2"},
-                                "maintTimeDate": {"daysToGoValue": 40, "flightStop_daysToGoValue": 40, "flightStop_hoursToGoText": "49:17", "flightStop_hoursToGoValue": 49.28324, "hoursToGoText": "44:17", "hoursToGoValue": 44.28324},
+                                "ftData": {
+                                    "airborne": "6751.71676",
+                                    "block": "0",
+                                    "landings": 19180,
+                                    "tachometer": "6759.1000",
+                                    "tachtime": "3963.2",
+                                },
+                                "maintTimeDate": {
+                                    "daysToGoValue": 40,
+                                    "flightStop_daysToGoValue": 40,
+                                    "flightStop_hoursToGoText": "49:17",
+                                    "flightStop_hoursToGoValue": 49.28324,
+                                    "hoursToGoText": "44:17",
+                                    "hoursToGoValue": 44.28324,
+                                },
                                 "model": "Cessna 172",
                                 "regnr": "SE-ABC",
                             }
@@ -67,7 +108,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
-        async with MyWebLogClient(self.username, self.password, self.app_token) as client:
+        async with MyWebLogClient(
+            self.username, self.password, self.app_token
+        ) as client:
             await client.obtainAppToken()
             result = await client.getObjects()
 
@@ -84,18 +127,57 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                                 "remarkCategory": "2",
                                 "remarkDate": "2024-12-31",
                                 "remarkID": "25026",
-                                "remarkText": "Kraftiga vibrationer efter start, svajande varvtal",
+                                "remarkText": (
+                                    "Kraftiga vibrationer efter start, "
+                                    "svajande varvtal"
+                                ),
                             }
                         ],
                         "club_id": "123",
                         "clubname": "Test Club",
                         "flightData": {
-                            "initial": {"airborne": "2854.9833", "block": None, "landings": "10000", "tachtime": "0.40"},
-                            "logged": {"airborne": "3896.73346", "block": "4655.71658", "landings": "9180", "tachtime": "3962.80000"},
-                            "total": {"airborne": 6751.71676, "airborneText": "6751:43", "block": 4655.71658, "blockText": "4655:43", "hobbsMeter": "0.0000", "hobbsMeterText": "0.0", "landings": 19180, "landingsText": "19180", "tachoMeter": "6759.1000", "tachoMeterText": "6759.1", "tachtime": 3963.2, "tachtimeText": "3963.2"},
+                            "initial": {
+                                "airborne": "2854.9833",
+                                "block": None,
+                                "landings": "10000",
+                                "tachtime": "0.40",
+                            },
+                            "logged": {
+                                "airborne": "3896.73346",
+                                "block": "4655.71658",
+                                "landings": "9180",
+                                "tachtime": "3962.80000",
+                            },
+                            "total": {
+                                "airborne": 6751.71676,
+                                "airborneText": "6751:43",
+                                "block": 4655.71658,
+                                "blockText": "4655:43",
+                                "hobbsMeter": "0.0000",
+                                "hobbsMeterText": "0.0",
+                                "landings": 19180,
+                                "landingsText": "19180",
+                                "tachoMeter": "6759.1000",
+                                "tachoMeterText": "6759.1",
+                                "tachtime": 3963.2,
+                                "tachtimeText": "3963.2",
+                            },
                         },
-                        "ftData": {"airborne": "6751.71676", "block": "0", "landings": 19180, "tachometer": "6759.1000", "tachtime": "3963.2"},
-                        "maintTimeDate": {"daysToGoValue": 40, "flightStop_daysToGoValue": 40, "flightStop_hoursToGoText": "49:17", "flightStop_hoursToGoValue": 49.28324, "hoursToGoText": "44:17", "hoursToGoValue": 44.28324},
+                        "ftData": {
+                            "airborne": "6751.71676",
+                            "block": "0",
+                            "landings": 19180,
+                            "tachometer": "6759.1000",
+                            "tachtime": "3963.2",
+                        },
+                        "maintTimeDate": {
+                            "daysToGoValue": 40,
+                            "flightStop_daysToGoValue": 40,
+                            "flightStop_hoursToGoText": "49:17",
+                            "flightStop_hoursToGoValue": 49.28324,
+                            "hoursToGoText": "44:17",
+                            "hoursToGoValue": 44.28324
+                        },
                         "model": "Cessna 172",
                         "regnr": "SE-ABC",
                     }
@@ -162,7 +244,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             await client.obtainAppToken()
             today = date.today().strftime("%Y-%m-%d")
             today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
-            result = await client.getBookings(self.airplaneId, mybookings=True, includeSun=True)
+            result = await client.getBookings(
+                self.airplaneId, mybookings=True, includeSun=True
+            )
 
         # Verify response
         self.assertEqual(
@@ -241,7 +325,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             await client.obtainAppToken()
             today = date.today().strftime("%Y-%m-%d")
             today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
-            result = await client.getBookings(self.airplaneId, mybookings=False, includeSun=False)
+            result = await client.getBookings(
+                self.airplaneId, mybookings=False, includeSun=False
+            )
 
         # Verify response
         self.assertEqual(
@@ -398,7 +484,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
     @patch("pyMyweblog.client.MyWebLogClient.getBalance", new_callable=AsyncMock)
     async def test_obtain_app_token(self, mock_get_balance, mock_post, mock_get):
         """Test the obtainAppToken method and validate GetBalance POST request."""
-        
+
         # Mock GET request to obtain app_token
         mock_get_response = AsyncMock()
         mock_get_response.status = 200
@@ -407,7 +493,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         )
         mock_get_response.raise_for_status = Mock()
         mock_get.return_value.__aenter__.return_value = mock_get_response
-        
+
         # Mock getBalance call
         getBalanceResult = {
             "Balance": '1500.75',
@@ -428,7 +514,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_post.return_value.__aenter__.return_value = mock_post_response
 
         # Initialize client with app_token=None
-        async with MyWebLogClient(self.username, self.password, app_token=None) as client:
+        async with MyWebLogClient(
+            self.username, self.password, app_token=None
+        ) as client:
             # Obtain app_token
             await client.obtainAppToken()
 
@@ -453,6 +541,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             headers={"X-app-secret": "**--hidden--**"},
             json=getBalanceResult,
         )
+
 
 if __name__ == "__main__":
     unittest.main()

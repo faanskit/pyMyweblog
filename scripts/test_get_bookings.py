@@ -17,7 +17,8 @@ dotenv.load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-async def test_get_bookings(username: str, password: str, app_token: str, airplaneId: str) -> None:
+async def test_get_bookings(
+        username: str, password: str, app_token: str, airplaneId: str) -> None:
     """Test fetching balance from MyWebLog API and print the result."""
     try:
         async with MyWebLogClient(
@@ -71,7 +72,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        asyncio.run(test_get_bookings(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN, TEST_AIRPLANE))
+        asyncio.run(
+            test_get_bookings(
+                TEST_USERNAME,
+                TEST_PASSWORD,
+                TEST_APPTOKEN,
+                TEST_AIRPLANE))
     except Exception as e:
         print(f"Unexpected Error: {e}")
         sys.exit(1)

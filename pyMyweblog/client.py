@@ -2,7 +2,6 @@ import aiohttp
 import json
 from typing import Any, Dict
 from datetime import date, timedelta
-import sys
 
 
 class MyWebLogClient:
@@ -25,7 +24,9 @@ class MyWebLogClient:
         self.password = password
         self.app_token = app_token
         self.app_secret = "**--hidden--**"
-        self.base_url = f"https://api.myweblog.se/api_mobile.php?version={self.api_version}"
+        self.base_url = (
+            f"https://api.myweblog.se/api_mobile.php?version={self.api_version}"
+        )
         self.session = None
         self.token_url = "https://myweblogtoken.netlify.com"
 
@@ -71,9 +72,13 @@ class MyWebLogClient:
         async with self.session.post(self.base_url, data=payload) as resp:
             resp.raise_for_status()
             # API returns text/plain; manually decode as JSON
-            response_json = await resp.text()
+            response_json = await resp.text(
+            )
             response = json.loads(response_json)
-            if response.get('qType') == qtype and response.get('APIVersion') == self.api_version:
+            if (
+                response.get('qType') == qtype
+                and response.get('APIVersion') == self.api_version
+            ):
                 return response.get('result', {})
             raise ValueError(f"Unexpected response from API: {response_json}")
 
