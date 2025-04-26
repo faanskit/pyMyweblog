@@ -69,7 +69,7 @@ class MyWebLogClient:
             **data,
         }
         async with self.session.post(self.base_url, data=payload) as resp:
-            await resp.raise_for_status()
+            resp.raise_for_status()
             # API returns text/plain; manually decode as JSON
             response_json = await resp.text()
             response = json.loads(response_json)
@@ -85,7 +85,7 @@ class MyWebLogClient:
                 async with netlify_session.get(
                     self.token_url, headers={"X-app-secret": self.app_secret}
                 ) as resp:
-                    await resp.raise_for_status()
+                    resp.raise_for_status()
                     data = await resp.json()
                     self.app_token = data.get("app_token")
 
@@ -98,7 +98,7 @@ class MyWebLogClient:
                     headers={"X-app-secret": self.app_secret},
                     json=result,
                 ) as resp:
-                    await resp.raise_for_status()
+                    resp.raise_for_status()
 
     async def getObjects(self) -> Dict[str, Any]:
         """Get objects from the MyWebLog API.

@@ -63,7 +63,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 }
             )
         )
-        mock_response.raise_for_status = AsyncMock()  # Use AsyncMock here
+        mock_response.raise_for_status = Mock()
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
@@ -152,7 +152,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 }
             )
         )
-        mock_response.raise_for_status = AsyncMock()  # Mock raise_for_status
+        mock_response.raise_for_status = Mock()
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
@@ -231,7 +231,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 }
             )
         )
-        mock_response.raise_for_status = AsyncMock()  # Mock raise_for_status
+        mock_response.raise_for_status = Mock()
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
@@ -304,7 +304,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 }
             )
         )
-        mock_response.raise_for_status = AsyncMock()  # Mock raise_for_status
+        mock_response.raise_for_status = Mock()
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
@@ -405,7 +405,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_get_response.json = AsyncMock(
             return_value={"app_token": "mock_app_token"}
         )
-        mock_get_response.raise_for_status = AsyncMock()  # Properly mock as AsyncMock
+        mock_get_response.raise_for_status = Mock()
         mock_get.return_value.__aenter__.return_value = mock_get_response
         
         # Mock getBalance call
@@ -424,7 +424,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock POST request to log app_token
         mock_post_response = AsyncMock()
         mock_post_response.status = 200
-        mock_post_response.raise_for_status = AsyncMock()
+        mock_post_response.raise_for_status = Mock()
         mock_post.return_value.__aenter__.return_value = mock_post_response
 
         # Initialize client with app_token=None
