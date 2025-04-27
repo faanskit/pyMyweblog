@@ -23,7 +23,7 @@ class MyWebLogClient:
             f"https://api.myweblog.se/api_mobile.php?version={self.api_version}"
         )
         self.session = None
-        self.token_url = "https://myweblogtoken.netlify.com"
+        self.token_url = "https://myweblogtoken.netlify.app/api/app_token"
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()

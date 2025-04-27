@@ -23,8 +23,9 @@ async def test_get_objects(username: str, password: str, app_token: str) -> None
         async with MyWebLogClient(
             username,
             password,
-            app_token,
+            app_token=None,
         ) as client:
+            await client.obtainAppToken()
             result = await client.getObjects()
             print("Objects retrieved from MyWebLog API:")
             pprint(result, indent=2)
@@ -49,10 +50,10 @@ if __name__ == "__main__":
     TEST_PASSWORD = os.getenv("MYWEBLOG_PASSWORD")
     TEST_APPTOKEN = os.getenv("MYWEBLOG_APPTOKEN")
 
-    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN]):
+    if not all([TEST_USERNAME, TEST_PASSWORD]):
         print(
-            "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD, "
-            "MYWEBLOG_APPTOKEN) måste vara satta i .env-filen."
+            "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD) "
+            " måste vara satta i .env-filen."
         )
         sys.exit(1)
 

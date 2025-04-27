@@ -25,8 +25,9 @@ async def test_get_bookings(
         async with MyWebLogClient(
             username,
             password,
-            app_token,
+            app_token=None,
         ) as client:
+            await client.obtainAppToken()
             result = await client.getBookings(airplaneId)
             print("Bookings retrieved from MyWebLog API:")
             pprint(result, indent=2)
@@ -65,10 +66,10 @@ if __name__ == "__main__":
     TEST_APPTOKEN = os.getenv("MYWEBLOG_APPTOKEN")
     TEST_AIRPLANE = os.getenv("MYWEBLOG_AIRPLANE_ID")
 
-    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN, TEST_AIRPLANE]):
+    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_AIRPLANE]):
         print(
             "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD, "
-            "MYWEBLOG_APPTOKEN, MYWEBLOG_AIRPLANE_ID) måste vara satta i .env-filen."
+            "MYWEBLOG_AIRPLANE_ID) måste vara satta i .env-filen."
         )
         sys.exit(1)
 

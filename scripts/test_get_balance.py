@@ -23,8 +23,9 @@ async def test_get_balance(username: str, password: str, app_token: str) -> None
         async with MyWebLogClient(
             username,
             password,
-            app_token,
+            app_token=None,
         ) as client:
+            await client.obtainAppToken()
             result = await client.getBalance()
             print("Balance retrieved from MyWebLog API:")
             pprint(result, indent=2)
@@ -64,8 +65,8 @@ if __name__ == "__main__":
 
     if not all([TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN]):
         print(
-            "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD, "
-            "MYWEBLOG_APPTOKEN) måste vara satta i .env-filen."
+            "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD)"
+            " måste vara satta i .env-filen."
         )
         sys.exit(1)
 
