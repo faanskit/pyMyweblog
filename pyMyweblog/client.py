@@ -97,6 +97,9 @@ class MyWebLogClient:
                 ) as resp:
                     resp.raise_for_status()
 
+                # Return the app token
+                return self.app_token
+
     async def getObjects(self) -> Dict[str, Any]:
         """Get objects from the MyWebLog API.
 
