@@ -133,7 +133,7 @@ To ensure your code adheres to the standards and passes tests, follow these step
 3. **Run unit tests**:
    - **Pytest**: Run all the tests in the `tests/` directory and verify they pass.
      ```bash
-     pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py
+     pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py --ignore=scripts/test_get_bookings.py
      ```
 
    If all tests pass without errors, you're good to go!

@@ -7,19 +7,14 @@ from datetime import date, timedelta
 class MyWebLogClient:
     """Client for interacting with the MyWebLog API."""
 
-    def __init__(
-        self,
-        username: str,
-        password: str,
-        app_token: str = None
-    ):
+    def __init__(self, username: str, password: str, app_token: str = None):
         """Initialize the MyWebLog client.
 
         Args:
             username (str): Username for authentication.
             password (str): Password for authentication.
         """
-        self.api_version = '2.0.3'
+        self.api_version = "2.0.3"
         self.username = username
         self.password = password
         self.app_token = app_token
@@ -55,9 +50,7 @@ class MyWebLogClient:
             )
 
         if self.app_token is None:
-            raise RuntimeError(
-                "App token was not available."
-            )
+            raise RuntimeError("App token was not available.")
 
         payload = {
             "qtype": qtype,
@@ -72,14 +65,13 @@ class MyWebLogClient:
         async with self.session.post(self.base_url, data=payload) as resp:
             resp.raise_for_status()
             # API returns text/plain; manually decode as JSON
-            response_json = await resp.text(
-            )
+            response_json = await resp.text()
             response = json.loads(response_json)
             if (
-                response.get('qType') == qtype
-                and response.get('APIVersion') == self.api_version
+                response.get("qType") == qtype
+                and response.get("APIVersion") == self.api_version
             ):
-                return response.get('result', {})
+                return response.get("result", {})
             raise ValueError(f"Unexpected response from API: {response_json}")
 
     async def obtainAppToken(self) -> None:

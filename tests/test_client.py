@@ -31,9 +31,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    'APIVersion': '2.0.3',
-                    'qType': 'GetObjects',
-                    'result': {
+                    "APIVersion": "2.0.3",
+                    "qType": "GetObjects",
+                    "result": {
                         "Object": [
                             {
                                 "ID": self.airplaneId,
@@ -66,9 +66,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                                     },
                                     "total": {
                                         "airborne": 6751.71676,
-                                        "airborneText": (
-                                            "6751:43"
-                                        ),
+                                        "airborneText": ("6751:43"),
                                         "block": 4655.71658,
                                         "blockText": "4655:43",
                                         "hobbsMeter": "0.0000",
@@ -176,7 +174,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                             "flightStop_hoursToGoText": "49:17",
                             "flightStop_hoursToGoValue": 49.28324,
                             "hoursToGoText": "44:17",
-                            "hoursToGoValue": 44.28324
+                            "hoursToGoValue": 44.28324,
                         },
                         "model": "Cessna 172",
                         "regnr": "SE-ABC",
@@ -209,11 +207,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    'APIVersion': '2.0.3',
-                    'qType': 'GetBookings',
-                    'result':
-                    {
-
+                    "APIVersion": "2.0.3",
+                    "qType": "GetBookings",
+                    "result": {
                         "bookings": [
                             {
                                 "ID": 101,
@@ -230,7 +226,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                                 "2025-04-18": {"sunrise": "06:00", "sunset": "20:00"}
                             },
                         },
-                    }
+                    },
                 }
             )
         )
@@ -297,10 +293,9 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    'APIVersion': '2.0.3',
-                    'qType': 'GetBookings',
-                    'result':
-                    {
+                    "APIVersion": "2.0.3",
+                    "qType": "GetBookings",
+                    "result": {
                         "bookings": [
                             {
                                 "ID": 102,
@@ -311,7 +306,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                                 "fullname": "Test User",
                             }
                         ]
-                    }
+                    },
                 }
             )
         )
@@ -374,19 +369,18 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    'APIVersion': '2.0.3',
-                    'qType': 'GetBalance',
-                    'result':
-                    {
-                        "Balance": '1500.75',
+                    "APIVersion": "2.0.3",
+                    "qType": "GetBalance",
+                    "result": {
+                        "Balance": "1500.75",
                         "Efternamn": "User",
                         "Fornamn": "Test",
                         "Partikel": None,
-                        'Result': 'OK',
+                        "Result": "OK",
                         "currency_symbol": "kr",
                         "fullname": "Test User",
                         "int_curr_symbol": "SEK",
-                    }
+                    },
                 }
             )
         )
@@ -404,11 +398,11 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             result,
             {
-                "Balance": '1500.75',
+                "Balance": "1500.75",
                 "Efternamn": "User",
                 "Fornamn": "Test",
                 "Partikel": None,
-                'Result': 'OK',
+                "Result": "OK",
                 "currency_symbol": "kr",
                 "fullname": "Test User",
                 "int_curr_symbol": "SEK",
@@ -488,19 +482,17 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock GET request to obtain app_token
         mock_get_response = AsyncMock()
         mock_get_response.status = 200
-        mock_get_response.json = AsyncMock(
-            return_value={"app_token": "mock_app_token"}
-        )
+        mock_get_response.json = AsyncMock(return_value={"app_token": "mock_app_token"})
         mock_get_response.raise_for_status = Mock()
         mock_get.return_value.__aenter__.return_value = mock_get_response
 
         # Mock getBalance call
         getBalanceResult = {
-            "Balance": '1500.75',
+            "Balance": "1500.75",
             "Efternamn": "User",
             "Fornamn": "Test",
             "Partikel": None,
-            'Result': 'OK',
+            "Result": "OK",
             "currency_symbol": "kr",
             "fullname": "Test User",
             "int_curr_symbol": "SEK",

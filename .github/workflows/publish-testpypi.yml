@@ -27,7 +27,7 @@ jobs:
         run: flake8 .
 
       - name: Run tests
-        run: pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py tests/
+        run: pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py --ignore=scripts/test_get_bookings.py tests/
 
   publish-testpypi:
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[dev-release]')
