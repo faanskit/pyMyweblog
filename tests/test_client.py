@@ -16,7 +16,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         self.app_token = "test_token"
         self.airplaneId = "TBD"
         self.base_url = "https://api.myweblog.se/api_mobile.php?version=2.0.3"
-        self.token_url = "https://myweblogtoken.netlify.com"
+        self.token_url = "https://myweblogtoken.netlify.app/api/app_token"
 
     async def asyncTearDown(self):
         """Clean up after each test (no manual session handling needed)."""
