@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyMyweblog"
-version = "0.3.3"
+version = "0.4.0"
 description = "A Python library for interacting with the MyWebLog API"
 readme = "README.md"
 authors = [{ name = "Marcus Karlsson", email = "marcus.karlsson@usa.net" }]
@@ -14,7 +14,7 @@ dependencies = [
     "aiohttp>=3.8.0"
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",

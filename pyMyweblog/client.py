@@ -18,7 +18,6 @@ class MyWebLogClient:
         self.username = username
         self.password = password
         self.app_token = app_token
-        self.app_secret = "**--hidden--**"
         self.base_url = (
             f"https://api.myweblog.se/api_mobile.php?version={self.api_version}"
         )
@@ -74,13 +73,13 @@ class MyWebLogClient:
                 return response.get("result", {})
             raise ValueError(f"Unexpected response from API: {response_json}")
 
-    async def obtainAppToken(self) -> None:
+    async def obtainAppToken(self, app_secret) -> None:
         """Obtain the app token from Netlify and log the request."""
         if self.app_token is None:
             async with aiohttp.ClientSession() as netlify_session:
                 # Obtain the app token
                 async with netlify_session.get(
-                    self.token_url, headers={"X-app-secret": self.app_secret}
+                    self.token_url, headers={"X-app-secret": app_secret}
                 ) as resp:
                     resp.raise_for_status()
                     data = await resp.json()
@@ -92,7 +91,7 @@ class MyWebLogClient:
                 # Log the app token request
                 async with netlify_session.post(
                     self.token_url,
-                    headers={"X-app-secret": self.app_secret},
+                    headers={"X-app-secret": app_secret},
                     json=result,
                 ) as resp:
                     resp.raise_for_status()

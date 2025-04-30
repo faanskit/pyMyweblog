@@ -18,7 +18,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 async def test_get_bookings(
-    username: str, password: str, app_token: str, airplaneId: str
+    username: str, password: str, app_secret: str, airplaneId: str
 ) -> None:
     """Test fetching balance from MyWebLog API and print the result."""
     try:
@@ -27,7 +27,7 @@ async def test_get_bookings(
             password,
             app_token=None,
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken(app_secret)
             result = await client.getBookings(airplaneId)
             print("Bookings retrieved from MyWebLog API:")
             pprint(result, indent=2)
@@ -63,20 +63,20 @@ if __name__ == "__main__":
     # Hämta autentiseringsuppgifter från miljövariabler (ingen default)
     TEST_USERNAME = os.getenv("MYWEBLOG_USERNAME")
     TEST_PASSWORD = os.getenv("MYWEBLOG_PASSWORD")
-    TEST_APPTOKEN = os.getenv("MYWEBLOG_APPTOKEN")
+    TEST_APPSECRET = os.getenv("APP_SECRET")
     TEST_AIRPLANE = os.getenv("MYWEBLOG_AIRPLANE_ID")
 
-    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_AIRPLANE]):
+    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_AIRPLANE, TEST_APPSECRET]):
         print(
             "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD, "
-            "MYWEBLOG_AIRPLANE_ID) måste vara satta i .env-filen."
+            "MYWEBLOG_AIRPLANE_ID, TEST_APPSECRET) måste vara satta i .env-filen."
         )
         sys.exit(1)
 
     try:
         asyncio.run(
             test_get_bookings(
-                TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN, TEST_AIRPLANE
+                TEST_USERNAME, TEST_PASSWORD, TEST_APPSECRET, TEST_AIRPLANE
             )
         )
     except Exception as e:

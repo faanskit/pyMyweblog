@@ -109,7 +109,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username, self.password, self.app_token
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken("Dummy")
             result = await client.getObjects()
 
         # Verify response
@@ -237,7 +237,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username, self.password, self.app_token
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken("Dummy")
             today = date.today().strftime("%Y-%m-%d")
             today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
             result = await client.getBookings(
@@ -317,7 +317,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username, self.password, self.app_token
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken("Dummy")
             today = date.today().strftime("%Y-%m-%d")
             today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
             result = await client.getBookings(
@@ -391,7 +391,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username, self.password, self.app_token
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken("Dummy")
             result = await client.getBalance()
 
         # Verify response
@@ -441,7 +441,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         async with MyWebLogClient(
             self.username, self.password, self.app_token
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken("Dummy")
             with self.assertRaises(aiohttp.ClientResponseError):
                 await client.getObjects()
 
@@ -510,27 +510,28 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             self.username, self.password, app_token=None
         ) as client:
             # Obtain app_token
-            await client.obtainAppToken()
+            app_token = await client.obtainAppToken("mock_app_secret")
 
             # Verify app_token was set
             self.assertEqual(client.app_token, "mock_app_token")
+            self.assertEqual(app_token, "mock_app_token")
 
         # Verify GET request to obtain app_token
         mock_get.assert_called_once_with(
             self.token_url,
-            headers={"X-app-secret": "**--hidden--**"},
+            headers={"X-app-secret": "mock_app_secret"},
         )
 
         # Verify GET request to obtain app_token
         mock_get.assert_called_once_with(
             self.token_url,
-            headers={"X-app-secret": "**--hidden--**"},
+            headers={"X-app-secret": "mock_app_secret"},
         )
 
         # Verify POST request to log app_token
         mock_post.assert_called_once_with(
             self.token_url,
-            headers={"X-app-secret": "**--hidden--**"},
+            headers={"X-app-secret": "mock_app_secret"},
             json=getBalanceResult,
         )
 

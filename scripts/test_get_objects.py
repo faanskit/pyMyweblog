@@ -17,7 +17,7 @@ dotenv.load_dotenv()
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-async def test_get_objects(username: str, password: str, app_token: str) -> None:
+async def test_get_objects(username: str, password: str, app_secret: str) -> None:
     """Test fetching objects from MyWebLog API and print the result."""
     try:
         async with MyWebLogClient(
@@ -25,7 +25,7 @@ async def test_get_objects(username: str, password: str, app_token: str) -> None
             password,
             app_token=None,
         ) as client:
-            await client.obtainAppToken()
+            await client.obtainAppToken(app_secret)
             result = await client.getObjects()
             print("Objects retrieved from MyWebLog API:")
             pprint(result, indent=2)
@@ -48,9 +48,9 @@ async def test_get_objects(username: str, password: str, app_token: str) -> None
 if __name__ == "__main__":
     TEST_USERNAME = os.getenv("MYWEBLOG_USERNAME")
     TEST_PASSWORD = os.getenv("MYWEBLOG_PASSWORD")
-    TEST_APPTOKEN = os.getenv("MYWEBLOG_APPTOKEN")
+    TEST_APPSECRET = os.getenv("APP_SECRET")
 
-    if not all([TEST_USERNAME, TEST_PASSWORD]):
+    if not all([TEST_USERNAME, TEST_PASSWORD, TEST_APPSECRET]):
         print(
             "Fel: Alla miljövariabler (MYWEBLOG_USERNAME, MYWEBLOG_PASSWORD) "
             " måste vara satta i .env-filen."
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        asyncio.run(test_get_objects(TEST_USERNAME, TEST_PASSWORD, TEST_APPTOKEN))
+        asyncio.run(test_get_objects(TEST_USERNAME, TEST_PASSWORD, TEST_APPSECRET))
     except Exception as e:
         print(f"Unexpected Error: {e}")
         sys.exit(1)
