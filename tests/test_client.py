@@ -296,7 +296,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                     "qType": "CreateBooking",
                     "result": {
                         "Result": "OK",
-                        "booking_id": 1234,
+                        "bookingID": 1234,
                     },
                 }
             )
@@ -316,7 +316,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                 comment="Test flight",
             )
         self.assertEqual(result["Result"], "OK")
-        self.assertEqual(result["booking_id"], 1234)
+        self.assertEqual(result["bookingID"], 1234)
         mock_post.assert_called_once_with(
             self.base_url,
             data={
@@ -347,7 +347,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                     "qType": "CutBooking",
                     "result": {
                         "Result": "OK",
-                        "booking_id": 1234,
+                        "bookingID": 1234,
                     },
                 }
             )
@@ -361,11 +361,11 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             await client.obtainAppToken("Dummy")
             result = await client.cutBooking(booking_id="1234")
         self.assertEqual(result["Result"], "OK")
-        self.assertEqual(result["booking_id"], 1234)
+        self.assertEqual(result["bookingID"], 1234)
         mock_post.assert_called_once_with(
             self.base_url,
             data={
-                "booking_id": "1234",
+                "bookingID": "1234",
                 "qtype": "CutBooking",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
@@ -388,7 +388,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
                     "qType": "DeleteBooking",
                     "result": {
                         "Result": "OK",
-                        "booking_id": 1234,
+                        "bookingID": 1234,
                     },
                 }
             )
@@ -402,11 +402,11 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             await client.obtainAppToken("Dummy")
             result = await client.deleteBooking(booking_id="1234")
         self.assertEqual(result["Result"], "OK")
-        self.assertEqual(result["booking_id"], 1234)
+        self.assertEqual(result["bookingID"], 1234)
         mock_post.assert_called_once_with(
             self.base_url,
             data={
-                "booking_id": "1234",
+                "bookingID": "1234",
                 "qtype": "DeleteBooking",
                 "mwl_u": self.username,
                 "mwl_p": self.password,

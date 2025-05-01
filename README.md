@@ -51,6 +51,36 @@ python -m scripts.myweblog
 
 You will be prompted to select an operation and, for bookings, to select an airplane. Make sure the required environment variables are set or exported before running.
 
+### Booking CLI Utility (`scripts/booking_cli.py`)
+
+This script provides an interactive command-line interface for managing airplane bookings via the MyWebLog API.
+
+**Features:**
+- View available airplanes
+- Create new bookings with confirmation prompts
+- Delete your own bookings with confirmation prompts
+- User-friendly and structured output
+
+**How to Run:**
+
+```bash
+python -m scripts.booking_cli
+```
+
+**Requirements:**
+- Environment variables must be set: `MYWEBLOG_USERNAME`, `MYWEBLOG_PASSWORD`, `APP_SECRET`
+- The `questionary` package must be installed for interactive prompts:
+
+```bash
+pip install questionary
+```
+
+**Usage Flow:**
+- On start, you will be welcomed and asked to select an airplane
+- You can view, create, or delete bookings for the selected airplane
+- All critical actions (creation/deletion) require confirmation before proceeding
+- Exit the CLI at any time by selecting "Exit" from the menu
+
 ### Library Usage: MyWebLogClient
 
 You can also use the API client in your own Python code:

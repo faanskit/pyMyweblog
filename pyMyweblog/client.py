@@ -337,7 +337,7 @@ class MyWebLogClient:
         Returns:
             Dict[str, Any]: API response.
         """
-        data = {"booking_id": booking_id}
+        data = {"bookingID": booking_id}
         return await self._myWeblogPost("CutBooking", data)
 
     async def deleteBooking(self, booking_id: str) -> Dict[str, Any]:
@@ -349,7 +349,7 @@ class MyWebLogClient:
         Returns:
             Dict[str, Any]: API response.
         """
-        data = {"booking_id": booking_id}
+        data = {"bookingID": booking_id}
         return await self._myWeblogPost("DeleteBooking", data)
 
     async def close(self) -> None:
