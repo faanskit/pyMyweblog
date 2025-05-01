@@ -212,6 +212,146 @@ class MyWebLogClient:
         data = {}
         return await self._myWeblogPost("GetBalance", data)
 
+    async def getTransactions(self) -> Dict[str, Any]:
+        """Get balance and transactions from the MyWebLog API.
+
+        Returns:
+            Dict[str, Any]: Response from the API.
+            Output example:
+            {
+                'Balance': float,
+                'Transactions': [
+                    {
+                        'ID': int,
+                        'date': str,  # Transaction date
+                        'amount': float,
+                        'description': str,
+                        'balance_after': float
+                    },
+                    ...
+                ]
+            }
+        """
+        data = {}
+        return await self._myWeblogPost("GetTransactions", data)
+
+    async def getFlightLog(self) -> Dict[str, Any]:
+        """Get logged flights from the MyWebLog API.
+
+        Returns:
+            Dict[str, Any]: Response from the API.
+            Output example:
+            {
+                'FlightLog': [
+                    {
+                        'flight_datum': str,      # Flight date (YYYY-MM-DD)
+                        'ac_id': str,            # Aircraft ID
+                        'regnr': str,            # Registration
+                        'departure': str,        # Departure airport
+                        'via': str or None,      # Via airport (optional)
+                        'arrival': str,          # Arrival airport
+                        'block_start': str or None, # Block start time (optional)
+                        'block_end': str or None,   # Block end time (optional)
+                        'block_total': str,      # Block total time
+                        'airborne_start': str,   # Airborne start time
+                        'airborne_end': str,     # Airborne end time
+                        'airborne_total': str,   # Airborne total time
+                        'nature_beskr': str,     # Flight type/description
+                        'comment': str or None   # Comment (optional)
+                    },
+                    ...
+                ]
+            }
+        """
+        data = {}
+        return await self._myWeblogPost("GetFlightLog", data)
+
+    async def getFlightLogReversed(self) -> Dict[str, Any]:
+        """Get logged flights from the MyWebLog API in reversed order.
+
+        Returns:
+            Dict[str, Any]: Response from the API.
+            Output example:
+            {
+                'FlightLog': [
+                    {
+                        'flight_datum': str,      # Flight date (YYYY-MM-DD)
+                        'ac_id': str,            # Aircraft ID
+                        'regnr': str,            # Registration
+                        'departure': str,        # Departure airport
+                        'via': str or None,      # Via airport (optional)
+                        'arrival': str,          # Arrival airport
+                        'block_start': str or None, # Block start time (optional)
+                        'block_end': str or None,   # Block end time (optional)
+                        'block_total': str,      # Block total time
+                        'airborne_start': str,   # Airborne start time
+                        'airborne_end': str,     # Airborne end time
+                        'airborne_total': str,   # Airborne total time
+                        'nature_beskr': str,     # Flight type/description
+                        'comment': str or None   # Comment (optional)
+                    },
+                    ...
+                ]
+            }
+        """
+        data = {}
+        return await self._myWeblogPost("GetFlightLogReversed", data)
+
+    async def createBooking(
+        self,
+        ac_id: str,
+        bStart: str,
+        bEnd: str,
+        fullname: str = None,
+        comment: str = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a new booking in the MyWebLog API.
+
+        Args:
+            ac_id (str): Aircraft ID.
+            bStart (str): Booking start datetime (YYYY-MM-DD HH:MM:SS).
+            bEnd (str): Booking end datetime (YYYY-MM-DD HH:MM:SS).
+            fullname (str, optional): Full name of the booker.
+            comment (str, optional): Booking comment.
+        Returns:
+            Dict[str, Any]: API response.
+        """
+        data = {
+            "ac_id": ac_id,
+            "bStart": bStart,
+            "bEnd": bEnd,
+        }
+        if fullname is not None:
+            data["fullname"] = fullname
+        if comment is not None:
+            data["comment"] = comment
+        return await self._myWeblogPost("CreateBooking", data)
+
+    async def cutBooking(self, booking_id: str) -> Dict[str, Any]:
+        """
+        Cut a booking (end it immediately) in the MyWebLog API.
+
+        Args:
+            booking_id (str): Booking ID to cut.
+        Returns:
+            Dict[str, Any]: API response.
+        """
+        data = {"booking_id": booking_id}
+        return await self._myWeblogPost("CutBooking", data)
+
+    async def deleteBooking(self, booking_id: str) -> Dict[str, Any]:
+        """
+        Delete a booking in the MyWebLog API.
+
+        Args:
+            booking_id (str): Booking ID to delete.
+        Returns:
+            Dict[str, Any]: API response.
+        """
+        data = {"booking_id": booking_id}
+        return await self._myWeblogPost("DeleteBooking", data)
+
     async def close(self) -> None:
         """Close the HTTP session."""
         if self.session:

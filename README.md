@@ -18,76 +18,89 @@ cd pyMyweblog
 pip install -e .
 ```
 
+---
+
+## Project Structure
+
+- `pyMyweblog/` — Main package, contains the API client (`client.py`).
+- `scripts/myweblog.py` — Interactive CLI utility for querying MyWebLog API.
+- `tests/test_client.py` — Unit tests for the API client.
+
+---
+
 ## Prerequisites
 
-To use the library, you need:
+To use the library or CLI, you need:
 - A valid MyWebLog username and password.
-- A valid `app_token` for MyWebLog [Mobile API](https://api.myweblog.se/index.php?page=mobile)
+- A valid **App Secret** (not app_token) for the MyWebLog API.
+
+Set these as environment variables:
+- `MYWEBLOG_USERNAME`
+- `MYWEBLOG_PASSWORD`
+- `APP_SECRET`
 
 ## Usage
 
-The `MyWebLogClient` class provides methods to interact with the MyWebLog API, such as fetching objects and bookings.
+### Interactive CLI Utility
 
-### Example: Fetching Objects
+You can use the interactive CLI to fetch objects, bookings, balance, transactions, and flight logs:
+
+```bash
+python -m scripts.myweblog
+```
+
+You will be prompted to select an operation and, for bookings, to select an airplane. Make sure the required environment variables are set or exported before running.
+
+### Library Usage: MyWebLogClient
+
+You can also use the API client in your own Python code:
 
 ```python
 from pyMyweblog.client import MyWebLogClient
+import asyncio
+import os
 
-# Initialize the client
-client = MyWebLogClient(
-    username="your_username",
-    password="your_password",
-    app_token="your_apptoken",
-)
-
-# Fetch objects
-objects = client.getObjects()
-print(objects)
-
-# Close the session
-client.close()
-
-# Alternatively, use as a context manager
-with MyWebLogClient(
-    username="your_username",
-    password="your_password",
-    app_token="your_apptoken",
-) as client:
-    objects = client.getObjects()
+async def main():
+    client = MyWebLogClient(
+        username=os.getenv("MYWEBLOG_USERNAME"),
+        password=os.getenv("MYWEBLOG_PASSWORD"),
+        app_token=None,  # Will be fetched using APP_SECRET
+    )
+    await client.obtainAppToken(os.getenv("APP_SECRET"))
+    objects = await client.getObjects()
     print(objects)
+    await client.close()
+
+asyncio.run(main())
 ```
 
-### Example: Fetching Bookings
+## Testing
 
-```python
-from pyMyweblog.client import MyWebLogClient
+Unit tests are located in `tests/test_client.py` and use the `unittest` framework. To run all tests:
 
-with MyWebLogClient(
-    username="your_username",
-    password="your_password",
-    app_token="your_apptoken",
-) as client:
-    bookings = client.getBookings(mybookings=True, includeSun=True)
-    print(bookings)
+```bash
+python -m unittest discover tests
 ```
 
-## Testing the API
+You can also run a specific test file:
 
-Before pushing any changes, please follow these steps to ensure everything works locally.
+```bash
+python -m unittest tests.test_client
+```
 
-1. **Set environment variables** (recommended for security):
-   ```bash
-   export MYWEBLOG_USERNAME="your_username"
-   export MYWEBLOG_PASSWORD="your_password"
-   export MYWEBLOG_APPTOKEN="your_apptoken"
-   ```
+### Requirements
 
-2. **Run the test script**:
-   ```bash
-   python scripts/test_get_objects.py
-   ```
+For development and running tests, install all dependencies (including test and CLI requirements):
 
-   This will fetch objects and print the API response in a formatted way using `pprint`.
+```bash
+pip install -e .[dev]
+```
+
+If you only want to use the CLI utility, you must also install `questionary`:
+
+```bash
+pip install questionary
+```
 
 ## Development
 
@@ -102,7 +115,10 @@ Before pushing any changes, please follow these steps to ensure everything works
 2. **Create and activate a virtual environment**:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+   # On Unix/macOS:
+   source venv/bin/activate
+   # On Windows:
+   .\venv\Scripts\activate
    ```
 
 3. **Install dependencies**:
@@ -110,69 +126,22 @@ Before pushing any changes, please follow these steps to ensure everything works
    pip install -e .[dev]
    ```
 
-### Running Tests Locally Before Pushing
-
-To ensure your code adheres to the standards and passes tests, follow these steps before you push your changes:
-
-1. **Install dependencies** (if not already done):
+4. **Format and lint your code**:
    ```bash
-   pip install -e .[dev]
+   black .
+   flake8 .
    ```
 
-2. **Run format and lint checks**:
-   - **Black**: Automatically formats your code to conform to Python’s PEP 8 style.
-     ```bash
-     black .
-     ```
-
-   - **Flake8**: Lints your code for style issues, such as unused imports or incorrect indentation.
-     ```bash
-     flake8 .
-     ```
-
-3. **Run unit tests**:
-   - **Pytest**: Run all the tests in the `tests/` directory and verify they pass.
-     ```bash
-     pytest --ignore=scripts/test_get_objects.py --ignore=scripts/test_get_balance.py --ignore=scripts/test_get_bookings.py
-     ```
-
-   If all tests pass without errors, you're good to go!
-
-### Running Unit Tests
-
-Unit tests are located in the `tests/` directory and use `unittest`.
-
-```bash
-python -m unittest discover tests
-```
+5. **Run unit tests**:
+   ```bash
+   python -m unittest discover tests
+   ```
 
 ### Modifying the Code
 
 - The main API client is in `pyMyweblog/client.py`.
-- Update `app_token` and `ac_id` in `MyWebLogClient` with valid values or make them configurable.
-- Add new methods to `MyWebLogClient` for additional API endpoints as needed.
-
-### Running Test Scripts
-
-Test scripts are located in the `scripts/` directory and use `python`.
-
-**Example #1**:
-To test the GetObjects function, you can run this script:
-```bash
-python -m scripts.test_get_objects
-```
-
-**Example #2**:
-To test the GetBalance function, you can run this script:
-```bash
-python -m scripts.test_get_balance
-```
-
-**Example #3**:
-To test the GetBookings function, you can run this script:
-```bash
-python -m scripts.test_get_bookings
-```
+- Add or update methods in `MyWebLogClient` for additional API endpoints as needed.
+- The CLI utility is in `scripts/myweblog.py` and can be extended for more interactive features.
 
 ## CI/CD and Publishing to PyPI and TestPyPI
 
