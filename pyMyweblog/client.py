@@ -1,7 +1,10 @@
 import aiohttp
 import json
+import logging
 from typing import Any, Dict
 from datetime import date, timedelta
+
+logger = logging.getLogger(__name__)
 
 
 class MyWebLogClient:
@@ -23,14 +26,17 @@ class MyWebLogClient:
         )
         self.session = None
         self.token_url = "https://myweblogtoken.netlify.app/api/app_token"
+        logger.debug("Initialized MyWebLogClient for user %s", self.username)
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
+        logger.debug("aiohttp ClientSession started for user %s", self.username)
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
         if self.session:
             await self.session.close()
+            logger.debug("aiohttp ClientSession closed for user %s", self.username)
             self.session = None
 
     async def _myWeblogPost(self, qtype: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -44,11 +50,13 @@ class MyWebLogClient:
             Dict[str, Any]: Response from the API.
         """
         if not self.session:
+            logger.error("ClientSession is not initialized. Use 'async with' context.")
             raise RuntimeError(
                 "ClientSession is not initialized. Use 'async with' context."
             )
 
         if self.app_token is None:
+            logger.error("App token was not available.")
             raise RuntimeError("App token was not available.")
 
         payload = {
@@ -61,43 +69,63 @@ class MyWebLogClient:
             "language": "se",
             **data,
         }
+        logger.debug(
+            "Sending POST request to MyWebLog API: qtype=%s, payload_keys=%s",
+            qtype,
+            list(payload.keys()),
+        )
         async with self.session.post(self.base_url, data=payload) as resp:
-            resp.raise_for_status()
-            # API returns text/plain; manually decode as JSON
-            response_json = await resp.text()
-            response = json.loads(response_json)
-            if (
-                response.get("qType") == qtype
-                and response.get("APIVersion") == self.api_version
-            ):
-                return response.get("result", {})
-            raise ValueError(f"Unexpected response from API: {response_json}")
+            try:
+                resp.raise_for_status()
+                response_json = await resp.text()
+                response = json.loads(response_json)
+                logger.debug(
+                    "Received response for qtype=%s: %s", qtype, str(response)[:300]
+                )
+                if (
+                    response.get("qType") == qtype
+                    and response.get("APIVersion") == self.api_version
+                ):
+                    return response.get("result", {})
+                logger.error("Unexpected response from API: %s", response_json)
+                raise ValueError(f"Unexpected response from API: {response_json}")
+            except Exception as e:
+                logger.exception("Error during POST request to MyWebLog API: %s", e)
+                raise
 
     async def obtainAppToken(self, app_secret) -> None:
         """Obtain the app token from Netlify and log the request."""
         if self.app_token is None:
+            logger.info("Obtaining app token from Netlify for user %s", self.username)
             async with aiohttp.ClientSession() as netlify_session:
-                # Obtain the app token
-                async with netlify_session.get(
-                    self.token_url, headers={"X-app-secret": app_secret}
-                ) as resp:
-                    resp.raise_for_status()
-                    data = await resp.json()
-                    self.app_token = data.get("app_token")
+                try:
+                    async with netlify_session.get(
+                        self.token_url, headers={"X-app-secret": app_secret}
+                    ) as resp:
+                        resp.raise_for_status()
+                        data = await resp.json()
+                        self.app_token = data.get("app_token")
+                        logger.debug("Obtained app token.")
 
-                # Call getBalance to verify the token
-                result = await self.getBalance()
+                    # Call getBalance to verify the token
+                    result = await self.getBalance()
+                    logger.debug(
+                        "Verified app token with getBalance: %s", str(result)[:200]
+                    )
 
-                # Log the app token request
-                async with netlify_session.post(
-                    self.token_url,
-                    headers={"X-app-secret": app_secret},
-                    json=result,
-                ) as resp:
-                    resp.raise_for_status()
+                    # Log the app token request
+                    async with netlify_session.post(
+                        self.token_url,
+                        headers={"X-app-secret": app_secret},
+                        json=result,
+                    ) as resp:
+                        resp.raise_for_status()
+                        logger.debug("Logged app token request to Netlify.")
 
-                # Return the app token
-                return self.app_token
+                    return self.app_token
+                except Exception as e:
+                    logger.exception("Failed to obtain app token: %s", e)
+                    raise
 
     async def getObjects(self) -> Dict[str, Any]:
         """Get objects from the MyWebLog API.

@@ -562,21 +562,23 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         # Mock API failure
         mock_response = AsyncMock()
         mock_response.status = 400
+        mock_response.real_url = self.base_url
         mock_response.text = AsyncMock(return_value="Bad Request")
-        mock_response.raise_for_status = Mock(
-            side_effect=aiohttp.ClientResponseError(
-                request_info=Mock(), history=(), status=400, message="Bad Request"
-            )
+        error = aiohttp.ClientResponseError(
+            request_info=Mock(), history=(), status=400, message="Bad Request"
         )
+        mock_response.raise_for_status = Mock(side_effect=error)
         mock_post.return_value.__aenter__.return_value = mock_response
 
         # Use context manager to handle session
         async with MyWebLogClient(
             self.username, self.password, self.app_token
         ) as client:
-            await client.obtainAppToken("Dummy")
-            with self.assertRaises(aiohttp.ClientResponseError):
+            client.app_token = "test_token"  # set directly to avoid extra API call
+            with self.assertRaises(aiohttp.ClientResponseError) as context:
                 await client.getObjects()
+            self.assertEqual(context.exception.status, 400)
+            self.assertIn("Bad Request", str(context.exception))
 
     @patch("aiohttp.ClientSession")
     async def test_close(self, mock_session):
@@ -818,6 +820,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_get_response.status = 200
         mock_get_response.json = AsyncMock(return_value={"app_token": "mock_app_token"})
         mock_get_response.raise_for_status = Mock()
+        mock_get_response.real_url = self.token_url
         mock_get.return_value.__aenter__.return_value = mock_get_response
 
         # Mock getBalance call
@@ -837,6 +840,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_post_response = AsyncMock()
         mock_post_response.status = 200
         mock_post_response.raise_for_status = Mock()
+        mock_post_response.real_url = self.token_url
         mock_post.return_value.__aenter__.return_value = mock_post_response
 
         # Initialize client with app_token=None
