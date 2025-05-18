@@ -1,3 +1,5 @@
+import io
+import sys
 import unittest
 from unittest.mock import patch, AsyncMock, Mock
 import json
@@ -570,15 +572,22 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.raise_for_status = Mock(side_effect=error)
         mock_post.return_value.__aenter__.return_value = mock_response
 
-        # Use context manager to handle session
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            client.app_token = "test_token"  # set directly to avoid extra API call
-            with self.assertRaises(aiohttp.ClientResponseError) as context:
-                await client.getObjects()
-            self.assertEqual(context.exception.status, 400)
-            self.assertIn("Bad Request", str(context.exception))
+        # Redirect stderr to capture error messages
+        # This is a workaround to capture the error message
+        stderr = sys.stderr
+        sys.stderr = io.StringIO()
+        try:
+            # Use context manager to handle session
+            async with MyWebLogClient(
+                self.username, self.password, self.app_token
+            ) as client:
+                client.app_token = "test_token"  # set directly to avoid extra API call
+                with self.assertRaises(aiohttp.ClientResponseError) as context:
+                    await client.getObjects()
+                self.assertEqual(context.exception.status, 400)
+                self.assertIn("Bad Request", str(context.exception))
+        finally:
+            sys.stderr = stderr
 
     @patch("aiohttp.ClientSession")
     async def test_close(self, mock_session):

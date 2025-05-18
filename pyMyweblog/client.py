@@ -180,12 +180,60 @@ class MyWebLogClient:
         data = {"includeObjectThumbnail": 0}
         return await self._myWeblogPost("GetObjects", data)
 
+    async def getBookingsWithDates(
+        self,
+        airplaneId: str,
+        fromDate: date,
+        toDate: date,
+        mybookings: bool = False,
+        includeSun: bool = False,
+    ) -> Dict[str, Any]:
+        """Get bookings for the next three days from the MyWebLog API.
+
+        Args:
+            airplaneId (str): Aircraft ID.
+            fromDate (date): Start date for bookings.
+            toDate (date): End date for bookings.
+            mybookings (bool): Whether to fetch only user's bookings.
+            includeSun (bool): Whether to include sunrise/sunset data.
+
+        Returns:
+            Dict[str, Any]: Response from the API.
+            Output:
+                ID (int)
+                ac_id (int)
+                regnr (string)
+                bobject_cat (int)
+                club_id (int)
+                user_id (int)
+                bStart (timestamp)
+                bEnd (timestamp)
+                typ (string)
+                primary_booking (bool)
+                fritext (string)
+                elevuserid (int)
+                platserkvar (int)
+                fullname (string)
+                email (string)
+                completeMobile (string)
+                sunData (dict): Reference airport data and dates
+        """
+        data = {
+            "ac_id": airplaneId,
+            "mybookings": int(mybookings),
+            "from_date": fromDate,
+            "to_date": toDate,
+            "includeSun": int(includeSun),
+        }
+        return await self._myWeblogPost("GetBookings", data)
+
     async def getBookings(
         self, airplaneId: str, mybookings: bool = False, includeSun: bool = False
     ) -> Dict[str, Any]:
-        """Get bookings from the MyWebLog API.
+        """Get bookings for the next three days from the MyWebLog API.
 
         Args:
+            airplaneId (str): Aircraft ID.
             mybookings (bool): Whether to fetch only user's bookings.
             includeSun (bool): Whether to include sunrise/sunset data.
 
@@ -212,14 +260,9 @@ class MyWebLogClient:
         """
         today = date.today().strftime("%Y-%m-%d")
         today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
-        data = {
-            "ac_id": airplaneId,
-            "mybookings": int(mybookings),
-            "from_date": today,
-            "to_date": today_plus_tree,
-            "includeSun": int(includeSun),
-        }
-        return await self._myWeblogPost("GetBookings", data)
+        return await self.getBookingsWithDates(
+            airplaneId, today, today_plus_tree, mybookings, includeSun
+        )
 
     async def getBalance(self) -> Dict[str, Any]:
         """Get the balance of the current user from the MyWebLog API.
