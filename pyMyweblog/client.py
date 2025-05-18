@@ -1,7 +1,7 @@
 import aiohttp
 import json
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class MyWebLogClient:
     """Client for interacting with the MyWebLog API."""
 
-    def __init__(self, username: str, password: str, app_token: str = None):
+    def __init__(self, username: str, password: str, app_token: Optional[str] = None):
         """Initialize the MyWebLog client.
 
         Args:
@@ -221,8 +221,8 @@ class MyWebLogClient:
         data = {
             "ac_id": airplaneId,
             "mybookings": int(mybookings),
-            "from_date": fromDate,
-            "to_date": toDate,
+            "from_date": fromDate.strftime("%Y-%m-%d"),
+            "to_date": toDate.strftime("%Y-%m-%d"),
             "includeSun": int(includeSun),
         }
         return await self._myWeblogPost("GetBookings", data)
@@ -258,8 +258,8 @@ class MyWebLogClient:
                 completeMobile (string)
                 sunData (dict): Reference airport data and dates
         """
-        today = date.today().strftime("%Y-%m-%d")
-        today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
+        today: date = date.today()
+        today_plus_tree = date.today() + timedelta(days=3)
         return await self.getBookingsWithDates(
             airplaneId, today, today_plus_tree, mybookings, includeSun
         )
@@ -373,8 +373,8 @@ class MyWebLogClient:
         ac_id: str,
         bStart: str,
         bEnd: str,
-        fullname: str = None,
-        comment: str = None,
+        fullname: Optional[str] = None,
+        comment: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a new booking in the MyWebLog API.
