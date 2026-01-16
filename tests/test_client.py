@@ -17,7 +17,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         self.password = "test_pass"
         self.app_token = "test_token"
         self.airplaneId = "TBD"
-        self.base_url = "https://api.myweblog.se/api_mobile.php?version=2.0.3"
+        self.base_url = "https://api.myweblog.se/api_mobile.php?version=3.0.0"
         self.token_url = "https://myweblogtoken.netlify.app/api/app_token"
 
     async def asyncTearDown(self):
@@ -33,7 +33,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetObjects",
                     "result": {
                         "Object": [
@@ -209,7 +209,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetBookings",
                     "result": {
                         "bookings": [
@@ -294,11 +294,11 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "CreateBooking",
                     "result": {
-                        "Result": "OK",
-                        "bookingID": 1234,
+                        "infoMessageTitle": "Booking created",
+                        "infoMessage": "Your booking has been confirmed",
                     },
                 }
             )
@@ -311,22 +311,24 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         ) as client:
             await client.obtainAppToken("Dummy")
             result = await client.createBooking(
-                ac_id="1118",
-                bStart="2025-05-01 10:00:00",
-                bEnd="2025-05-01 12:00:00",
-                fullname="Test User",
-                comment="Test flight",
+                ac_id=1118,
+                bStart="2025-05-01T10:00+02:00",
+                bEnd="2025-05-01T12:00+02:00",
+                fritext="Test flight",
+                expectedAirborne=2.0,
+                platserkvar=1,
             )
-        self.assertEqual(result["Result"], "OK")
-        self.assertEqual(result["bookingID"], 1234)
+        self.assertIn("infoMessageTitle", result)
+        self.assertEqual(result["infoMessageTitle"], "Booking created")
         mock_post.assert_called_once_with(
             self.base_url,
             data={
-                "ac_id": "1118",
-                "bStart": "2025-05-01 10:00:00",
-                "bEnd": "2025-05-01 12:00:00",
-                "fullname": "Test User",
-                "comment": "Test flight",
+                "ac_id": 1118,
+                "bStart": "2025-05-01T10:00+02:00",
+                "bEnd": "2025-05-01T12:00+02:00",
+                "fritext": "Test flight",
+                "expectedAirborne": 2.0,
+                "platserkvar": 1,
                 "qtype": "CreateBooking",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
@@ -345,11 +347,11 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "CutBooking",
                     "result": {
-                        "Result": "OK",
-                        "bookingID": 1234,
+                        "infoMessageTitle": "Booking cut",
+                        "infoMessage": "Booking has been cut successfully",
                     },
                 }
             )
@@ -362,8 +364,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         ) as client:
             await client.obtainAppToken("Dummy")
             result = await client.cutBooking(booking_id="1234")
-        self.assertEqual(result["Result"], "OK")
-        self.assertEqual(result["bookingID"], 1234)
+        self.assertIn("infoMessageTitle", result)
+        self.assertEqual(result["infoMessageTitle"], "Booking cut")
         mock_post.assert_called_once_with(
             self.base_url,
             data={
@@ -386,11 +388,11 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "DeleteBooking",
                     "result": {
-                        "Result": "OK",
-                        "bookingID": 1234,
+                        "infoMessageTitle": "Booking deleted",
+                        "infoMessage": "Booking has been deleted successfully",
                     },
                 }
             )
@@ -403,8 +405,8 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         ) as client:
             await client.obtainAppToken("Dummy")
             result = await client.deleteBooking(booking_id="1234")
-        self.assertEqual(result["Result"], "OK")
-        self.assertEqual(result["bookingID"], 1234)
+        self.assertIn("infoMessageTitle", result)
+        self.assertEqual(result["infoMessageTitle"], "Booking deleted")
         mock_post.assert_called_once_with(
             self.base_url,
             data={
@@ -428,7 +430,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetBookings",
                     "result": {
                         "bookings": [
@@ -504,7 +506,7 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetBalance",
                     "result": {
                         "Balance": "1500.75",
@@ -626,25 +628,32 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetFlightLogReversed",
                     "result": {
                         "FlightLog": [
                             {
                                 "flight_datum": "2024-04-30",
-                                "ac_id": "1118",
+                                "ac_id": 1118,
                                 "regnr": "LN-ABC",
+                                "fullname": "Test Pilot",
                                 "departure": "ESTA",
                                 "via": None,
                                 "arrival": "ESTL",
-                                "block_start": None,
-                                "block_end": None,
-                                "block_total": "0.0000",
+                                "block_start": "10:00",
+                                "block_end": "11:00",
+                                "block_total": "1.0000",
                                 "airborne_start": "12:00",
                                 "airborne_end": "13:00",
                                 "airborne_total": "1.0000",
+                                "tach_start": "12:00",
+                                "tach_end": "13:00",
+                                "tach_total": "1.0000",
+                                "flights": 1,
+                                "distance": 150.5,
                                 "nature_beskr": "PRIVAT",
                                 "comment": "Test comment",
+                                "rowID": 12345,
                             }
                         ]
                     },
@@ -658,25 +667,29 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             self.username, self.password, self.app_token
         ) as client:
             await client.obtainAppToken("Dummy")
-            result = await client.getFlightLogReversed()
+            result = await client.getFlightLogReversed(limit=10, myflights=True)
 
         self.assertIn("FlightLog", result)
         self.assertIsInstance(result["FlightLog"], list)
         self.assertGreater(len(result["FlightLog"]), 0)
         flight = result["FlightLog"][0]
         self.assertEqual(flight["flight_datum"], "2024-04-30")
-        self.assertEqual(flight["ac_id"], "1118")
+        self.assertEqual(flight["ac_id"], 1118)
         self.assertEqual(flight["regnr"], "LN-ABC")
         self.assertEqual(flight["departure"], "ESTA")
         self.assertEqual(flight["arrival"], "ESTL")
         self.assertEqual(flight["airborne_total"], "1.0000")
         self.assertEqual(flight["nature_beskr"], "PRIVAT")
         self.assertEqual(flight["comment"], "Test comment")
+        self.assertEqual(flight["tach_total"], "1.0000")
+        self.assertEqual(flight["distance"], 150.5)
 
         # Verify request
         mock_post.assert_called_once_with(
             self.base_url,
             data={
+                "limit": 10,
+                "myflights": 1,
                 "qtype": "GetFlightLogReversed",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
@@ -696,25 +709,32 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetFlightLog",
                     "result": {
                         "FlightLog": [
                             {
                                 "flight_datum": "2024-04-30",
-                                "ac_id": "1118",
+                                "ac_id": 1118,
                                 "regnr": "LN-ABC",
+                                "fullname": "Test Pilot",
                                 "departure": "ESTA",
                                 "via": None,
                                 "arrival": "ESTL",
-                                "block_start": None,
-                                "block_end": None,
-                                "block_total": "0.0000",
+                                "block_start": "10:00",
+                                "block_end": "11:00",
+                                "block_total": "1.0000",
                                 "airborne_start": "12:00",
                                 "airborne_end": "13:00",
                                 "airborne_total": "1.0000",
+                                "tach_start": "12:00",
+                                "tach_end": "13:00",
+                                "tach_total": "1.0000",
+                                "flights": 1,
+                                "distance": 150.5,
                                 "nature_beskr": "PRIVAT",
                                 "comment": "Test comment",
+                                "rowID": 12345,
                             }
                         ]
                     },
@@ -728,25 +748,29 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             self.username, self.password, self.app_token
         ) as client:
             await client.obtainAppToken("Dummy")
-            result = await client.getFlightLog()
+            result = await client.getFlightLog(limit=15)
 
         self.assertIn("FlightLog", result)
         self.assertIsInstance(result["FlightLog"], list)
         self.assertGreater(len(result["FlightLog"]), 0)
         flight = result["FlightLog"][0]
         self.assertEqual(flight["flight_datum"], "2024-04-30")
-        self.assertEqual(flight["ac_id"], "1118")
+        self.assertEqual(flight["ac_id"], 1118)
         self.assertEqual(flight["regnr"], "LN-ABC")
         self.assertEqual(flight["departure"], "ESTA")
         self.assertEqual(flight["arrival"], "ESTL")
         self.assertEqual(flight["airborne_total"], "1.0000")
         self.assertEqual(flight["nature_beskr"], "PRIVAT")
         self.assertEqual(flight["comment"], "Test comment")
+        self.assertEqual(flight["tach_total"], "1.0000")
+        self.assertEqual(flight["distance"], 150.5)
 
         # Verify request
         mock_post.assert_called_once_with(
             self.base_url,
             data={
+                "limit": 15,
+                "myflights": 0,
                 "qtype": "GetFlightLog",
                 "mwl_u": self.username,
                 "mwl_p": self.password,
@@ -766,17 +790,21 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
         mock_response.text = AsyncMock(
             return_value=json.dumps(
                 {
-                    "APIVersion": "2.0.3",
+                    "APIVersion": "3.0.0",
                     "qType": "GetTransactions",
                     "result": {
-                        "Balance": "1234.56",
+                        "Balance": 1234.56,
+                        "BalanceAtToDate": 1234.56,
+                        "UsedCountLimit": 1,
+                        "currency_symbol": "kr",
+                        "int_curr_symbol": "SEK",
                         "Transaction": [
                             {
+                                "datum": "2024-04-30",
+                                "created": "2024-04-30 14:30:00",
+                                "belopp": -100.00,
+                                "comment": "Landing fee",
                                 "bookedby_fullname": "giroDirect",
-                                "amount": "-100.00",
-                                "date": "2024-04-30",
-                                "description": "Landing fee",
-                                "transaction_id": "TX123456",
                             }
                         ],
                     },
@@ -790,24 +818,27 @@ class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
             self.username, self.password, self.app_token
         ) as client:
             await client.obtainAppToken("Dummy")
-            result = await client.getTransactions()
+            result = await client.getTransactions(limit=30)
 
         # Check response structure
         self.assertIn("Balance", result)
         self.assertIn("Transaction", result)
-        self.assertEqual(result["Balance"], "1234.56")
+        self.assertIn("BalanceAtToDate", result)
+        self.assertIn("UsedCountLimit", result)
+        self.assertEqual(result["Balance"], 1234.56)
         self.assertIsInstance(result["Transaction"], list)
         self.assertGreater(len(result["Transaction"]), 0)
         self.assertEqual(result["Transaction"][0]["bookedby_fullname"], "giroDirect")
-        self.assertEqual(result["Transaction"][0]["amount"], "-100.00")
-        self.assertEqual(result["Transaction"][0]["date"], "2024-04-30")
-        self.assertEqual(result["Transaction"][0]["description"], "Landing fee")
-        self.assertEqual(result["Transaction"][0]["transaction_id"], "TX123456")
+        self.assertEqual(result["Transaction"][0]["belopp"], -100.00)
+        self.assertEqual(result["Transaction"][0]["datum"], "2024-04-30")
+        self.assertEqual(result["Transaction"][0]["created"], "2024-04-30 14:30:00")
+        self.assertEqual(result["Transaction"][0]["comment"], "Landing fee")
 
         # Verify request
         mock_post.assert_called_once_with(
             self.base_url,
             data={
+                "limit": 30,
                 "qtype": "GetTransactions",
                 "mwl_u": self.username,
                 "mwl_p": self.password,

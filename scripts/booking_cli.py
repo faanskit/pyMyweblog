@@ -187,8 +187,12 @@ def main():
             start_dt, end_dt = prompt_new_booking()
             if not start_dt or not end_dt:
                 continue
-            bStart = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-            bEnd = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+            # Convert to ISO 8601 format with timezone (using system timezone offset)
+            bStart = start_dt.strftime("%Y-%m-%dT%H:%M%z")
+            bEnd = end_dt.strftime("%Y-%m-%dT%H:%M%z")
+            # Format timezone offset to include colon: +02:00 instead of +0200
+            bStart = bStart[:-2] + ":" + bStart[-2:]
+            bEnd = bEnd[:-2] + ":" + bEnd[-2:]
             duration_min = int((end_dt - start_dt).total_seconds() // 60)
             # Get regnr for friendly message
             regnr = None
@@ -198,7 +202,7 @@ def main():
                     break
             regnr = regnr or str(airplane_id)
             confirm_msg = (
-                f"You will now book {regnr} at {bStart} for {duration_min} minutes. "
+                f"You will now book {regnr} for {duration_min} minutes. "
                 "Please confirm."
             )
             confirm = questionary.confirm(confirm_msg).ask()
@@ -210,19 +214,18 @@ def main():
                 async with MyWebLogClient(USERNAME, PASSWORD, app_token=None) as client:
                     await client.obtainAppToken(APP_SECRET)
                     return await client.createBooking(
-                        airplane_id, bStart, bEnd, fullname=fullname
+                        int(airplane_id), bStart, bEnd, fritext=fullname
                     )
 
             resp = run_async(create_booking())
-            if resp.get("Result") == "OK":
+            if resp.get("infoMessageTitle") or resp.get("infoMessage"):
                 print(
-                    f"Booking created successfully! Booking ID: {resp.get('BookingID')}"
+                    f"Booking created successfully! "
+                    f"{resp.get('infoMessageTitle', '')}: "
+                    f"{resp.get('infoMessage', '').strip()}"
                 )
-                if resp.get("infoMessageTitle") or resp.get("infoMessage"):
-                    print(
-                        f"{resp.get('infoMessageTitle','')}: "
-                        f"{resp.get('infoMessage','').strip()}"
-                    )
+            elif resp.get("errorMessage"):
+                print(f"Booking creation failed: {resp.get('errorMessage')}")
             else:
                 print(f"Booking creation failed: {resp}")
         elif action == "Delete one of your bookings":

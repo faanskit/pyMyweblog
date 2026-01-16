@@ -84,17 +84,20 @@ async def run_operation(client, op: str):
         pprint(result)
         return
     elif op == "getTransactions":
-        result = await client.getTransactions()
+        # Get transactions with default limit of 20, can be enhanced with date filters
+        result = await client.getTransactions(limit=20)
         print(f"Result for {op}:")
         pprint(result)
         return
     elif op == "getFlightLog":
-        result = await client.getFlightLog()
+        # Get flight log with default limit of 20, can be enhanced with date filters
+        result = await client.getFlightLog(limit=20)
         print(f"Result for {op}:")
         pprint(result)
         return
     elif op == "getFlightLogReversed":
-        result = await client.getFlightLogReversed()
+        # Get reversed flight log with default limit of 20
+        result = await client.getFlightLogReversed(limit=20)
         print(f"Result for {op}:")
         pprint(result)
         return

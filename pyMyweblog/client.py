@@ -17,7 +17,7 @@ class MyWebLogClient:
             username (str): Username for authentication.
             password (str): Password for authentication.
         """
-        self.api_version = "2.0.3"
+        self.api_version = "3.0.0"
         self.username = username
         self.password = password
         self.app_token = app_token
@@ -283,32 +283,64 @@ class MyWebLogClient:
         data = {}
         return await self._myWeblogPost("GetBalance", data)
 
-    async def getTransactions(self) -> Dict[str, Any]:
+    async def getTransactions(
+        self,
+        limit: int = 20,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+    ) -> Dict[str, Any]:
         """Get balance and transactions from the MyWebLog API.
 
+        Args:
+            limit (int): Number of transactions. Default: 20
+            from_date (date, optional): Start date for transactions.
+            to_date (date, optional): End date for transactions.
+
         Returns:
             Dict[str, Any]: Response from the API.
             Output example:
             {
-                'Balance': float,
-                'Transactions': [
+                'Balance': decimal,
+                'BalanceAtToDate': decimal,
+                'UsedCountLimit': int,
+                'currency_symbol': str,  # E.g. "kr"
+                'int_curr_symbol': str,  # E.g. "SEK"
+                'Transaction': [
                     {
-                        'ID': int,
-                        'date': str,  # Transaction date
-                        'amount': float,
-                        'description': str,
-                        'balance_after': float
+                        'datum': str,  # Transaction date (yyyy-mm-dd)
+                        'created': str,  # Created timestamp (yyyy-mm-dd hh:mm:ss)
+                        'belopp': decimal,  # Transaction amount
+                        'comment': str,
+                        'bookedby_fullname': str
                     },
                     ...
                 ]
             }
         """
-        data = {}
+        data: Dict[str, Any] = {"limit": limit}
+        if from_date is not None:
+            data["from_date"] = from_date.strftime("%Y-%m-%d")
+        if to_date is not None:
+            data["to_date"] = to_date.strftime("%Y-%m-%d")
         return await self._myWeblogPost("GetTransactions", data)
 
-    async def getFlightLog(self) -> Dict[str, Any]:
+    async def getFlightLog(
+        self,
+        limit: int = 20,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+        myflights: bool = False,
+        ac_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Get logged flights from the MyWebLog API.
 
+        Args:
+            limit (int): Number of rows. Default: 20
+            from_date (date, optional): Start date for flights.
+            to_date (date, optional): End date for flights.
+            myflights (bool): Only own flights if set to True. Default: False
+            ac_id (int, optional): Aircraft ID filter.
+
         Returns:
             Dict[str, Any]: Response from the API.
             Output example:
@@ -316,87 +348,109 @@ class MyWebLogClient:
                 'FlightLog': [
                     {
                         'flight_datum': str,      # Flight date (YYYY-MM-DD)
-                        'ac_id': str,            # Aircraft ID
+                        'ac_id': int,            # Aircraft ID
                         'regnr': str,            # Registration
-                        'departure': str,        # Departure airport
-                        'via': str or None,      # Via airport (optional)
-                        'arrival': str,          # Arrival airport
-                        'block_start': str or None, # Block start time (optional)
-                        'block_end': str or None,   # Block end time (optional)
-                        'block_total': str,      # Block total time
-                        'airborne_start': str,   # Airborne start time
-                        'airborne_end': str,     # Airborne end time
-                        'airborne_total': str,   # Airborne total time
-                        'nature_beskr': str,     # Flight type/description
-                        'comment': str or None   # Comment (optional)
+                        'fullname': str,         # Pilot name
+                        'departure': str,        # Departure airport (ICAO code)
+                        'via': str or None,      # Via airport (ICAO code)
+                        'arrival': str,          # Arrival airport (ICAO code)
+                        'block_start': str,      # Block start time (hh:mm)
+                        'block_end': str,        # Block end time (hh:mm)
+                        'block_total': decimal,  # Block total time
+                        'airborne_start': str,   # Airborne start time (hh:mm)
+                        'airborne_end': str,     # Airborne end time (hh:mm)
+                        'airborne_total': decimal, # Airborne total time
+                        'tach_start': str,       # Tach start time (hh:mm)
+                        'tach_end': str,         # Tach end time (hh:mm)
+                        'tach_total': decimal,   # Tach total time
+                        'flights': int,          # Number of flights
+                        'distance': decimal,     # Distance
+                        'nature_beskr': str,     # Type of flight
+                        'comment': str,          # Comment
+                        'rowID': int             # Row ID
                     },
                     ...
                 ]
             }
         """
-        data = {}
+        data: Dict[str, Any] = {"limit": limit, "myflights": int(myflights)}
+        if from_date is not None:
+            data["from_date"] = from_date.strftime("%Y-%m-%d")
+        if to_date is not None:
+            data["to_date"] = to_date.strftime("%Y-%m-%d")
+        if ac_id is not None:
+            data["ac_id"] = ac_id
         return await self._myWeblogPost("GetFlightLog", data)
 
-    async def getFlightLogReversed(self) -> Dict[str, Any]:
+    async def getFlightLogReversed(
+        self,
+        limit: int = 20,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+        myflights: bool = False,
+        ac_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Get logged flights from the MyWebLog API in reversed order.
 
+        Args:
+            limit (int): Number of rows. Default: 20
+            from_date (date, optional): Start date for flights.
+            to_date (date, optional): End date for flights.
+            myflights (bool): Only own flights if set to True. Default: False
+            ac_id (int, optional): Aircraft ID filter.
+
         Returns:
-            Dict[str, Any]: Response from the API.
-            Output example:
-            {
-                'FlightLog': [
-                    {
-                        'flight_datum': str,      # Flight date (YYYY-MM-DD)
-                        'ac_id': str,            # Aircraft ID
-                        'regnr': str,            # Registration
-                        'departure': str,        # Departure airport
-                        'via': str or None,      # Via airport (optional)
-                        'arrival': str,          # Arrival airport
-                        'block_start': str or None, # Block start time (optional)
-                        'block_end': str or None,   # Block end time (optional)
-                        'block_total': str,      # Block total time
-                        'airborne_start': str,   # Airborne start time
-                        'airborne_end': str,     # Airborne end time
-                        'airborne_total': str,   # Airborne total time
-                        'nature_beskr': str,     # Flight type/description
-                        'comment': str or None   # Comment (optional)
-                    },
-                    ...
-                ]
-            }
+            Dict[str, Any]: Response from the API,
+            (same as GetFlightLog but reversed order).
+            See GetFlightLog for output structure.
         """
-        data = {}
+        data: Dict[str, Any] = {"limit": limit, "myflights": int(myflights)}
+        if from_date is not None:
+            data["from_date"] = from_date.strftime("%Y-%m-%d")
+        if to_date is not None:
+            data["to_date"] = to_date.strftime("%Y-%m-%d")
+        if ac_id is not None:
+            data["ac_id"] = ac_id
         return await self._myWeblogPost("GetFlightLogReversed", data)
 
     async def createBooking(
         self,
-        ac_id: str,
+        ac_id: int,
         bStart: str,
         bEnd: str,
-        fullname: Optional[str] = None,
-        comment: Optional[str] = None,
+        fritext: Optional[str] = None,
+        expectedAirborne: Optional[float] = None,
+        platserkvar: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Create a new booking in the MyWebLog API.
 
         Args:
-            ac_id (str): Aircraft ID.
-            bStart (str): Booking start datetime (YYYY-MM-DD HH:MM:SS).
-            bEnd (str): Booking end datetime (YYYY-MM-DD HH:MM:SS).
-            fullname (str, optional): Full name of the booker.
-            comment (str, optional): Booking comment.
+            ac_id (int): Aircraft ID.
+            bStart (str): Booking start datetime in ISO 8601 format with timezone
+            (e.g., "2018-04-22T10:30+02:00").
+            bEnd (str): Booking end datetime in ISO 8601 format with timezone
+            (e.g., "2018-04-22T10:30+02:00").
+            fritext (str, optional): Booking text/comment.
+            expectedAirborne (float, optional): Expected airborne time.
+            platserkvar (int, optional): Seat reservation.
         Returns:
-            Dict[str, Any]: API response.
+            Dict[str, Any]: API response containing:
+                - infoMessageTitle (str): Message title if approved
+                - infoMessage (str): Message text if approved
+                - errorMessage (str): Error message if not approved
         """
         data = {
             "ac_id": ac_id,
             "bStart": bStart,
             "bEnd": bEnd,
         }
-        if fullname is not None:
-            data["fullname"] = fullname
-        if comment is not None:
-            data["comment"] = comment
+        if fritext is not None:
+            data["fritext"] = fritext
+        if expectedAirborne is not None:
+            data["expectedAirborne"] = expectedAirborne
+        if platserkvar is not None:
+            data["platserkvar"] = platserkvar
         return await self._myWeblogPost("CreateBooking", data)
 
     async def cutBooking(self, booking_id: str) -> Dict[str, Any]:
