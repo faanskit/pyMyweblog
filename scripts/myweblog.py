@@ -174,6 +174,8 @@ if __name__ == "__main__":
             AVAILABLE_OPERATIONS[menu_choices.index(sel)][1] for sel in answer
         ]
 
-    if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(main(selected_ops))
+    try:
+        asyncio.run(main(selected_ops))
+    except KeyboardInterrupt:
+        print("\nAvbröts av användaren.")
+        sys.exit(0)
