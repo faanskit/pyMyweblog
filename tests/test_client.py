@@ -1,918 +1,351 @@
-import io
-import sys
+"""Unit tests for MyWebLogClient against API v5 REST endpoints."""
+
+from __future__ import annotations
+
+from datetime import date
 import unittest
-from unittest.mock import patch, AsyncMock, Mock
-import json
-from datetime import date, timedelta
+from unittest.mock import AsyncMock, patch
+
 import aiohttp
+
+from pyMyweblog.auth import AbstractMyWebLogAuth
 from pyMyweblog.client import MyWebLogClient
 
 
-class TestMyWebLogClient(unittest.IsolatedAsyncioTestCase):
-    """Test cases for MyWebLogClient (aiohttp/async version)."""
+class DummyAuth(AbstractMyWebLogAuth):
+    """Mock auth provider for testing MyWebLogClient."""
 
-    def setUp(self):
-        """Set up test parameters."""
-        self.username = "test_user"
-        self.password = "test_pass"
-        self.app_token = "test_token"
-        self.airplaneId = "TBD"
-        self.base_url = "https://api.myweblog.se/api_mobile.php?version=3.0.0"
-        self.token_url = "https://myweblogtoken.netlify.app/api/app_token"
+    def __init__(self, websession: aiohttp.ClientSession) -> None:
+        super().__init__(websession=websession)
+        self.request = AsyncMock()
+        self.async_refresh_tokens = AsyncMock(return_value={"access_token": "new_tok"})
 
-    async def asyncTearDown(self):
-        """Clean up after each test (no manual session handling needed)."""
-        pass
+    async def async_get_access_token(self) -> str:
+        return "mock_token"
 
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_objects_success(self, mock_post):
-        """Test successful retrieval of objects."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetObjects",
-                    "result": {
-                        "Object": [
-                            {
-                                "ID": self.airplaneId,
-                                "activeRemarks": [
-                                    {
-                                        "remarkBy": "Test Pilot",
-                                        "remarkCategory": "2",
-                                        "remarkDate": "2024-12-31",
-                                        "remarkID": "25026",
-                                        "remarkText": (
-                                            "Kraftiga vibrationer efter start, "
-                                            "svajande varvtal"
-                                        ),
-                                    }
-                                ],
-                                "club_id": "123",
-                                "clubname": "Test Club",
-                                "flightData": {
-                                    "initial": {
-                                        "airborne": "2854.9833",
-                                        "block": None,
-                                        "landings": "10000",
-                                        "tachtime": "0.40",
-                                    },
-                                    "logged": {
-                                        "airborne": "3896.73346",
-                                        "block": "4655.71658",
-                                        "landings": "9180",
-                                        "tachtime": "3962.80000",
-                                    },
-                                    "total": {
-                                        "airborne": 6751.71676,
-                                        "airborneText": ("6751:43"),
-                                        "block": 4655.71658,
-                                        "blockText": "4655:43",
-                                        "hobbsMeter": "0.0000",
-                                        "hobbsMeterText": "0.0",
-                                        "landings": 19180,
-                                        "landingsText": "19180",
-                                        "tachoMeter": "6759.1000",
-                                        "tachoMeterText": "6759.1",
-                                        "tachtime": 3963.2,
-                                        "tachtimeText": "3963.2",
-                                    },
-                                },
-                                "ftData": {
-                                    "airborne": "6751.71676",
-                                    "block": "0",
-                                    "landings": 19180,
-                                    "tachometer": "6759.1000",
-                                    "tachtime": "3963.2",
-                                },
-                                "maintTimeDate": {
-                                    "daysToGoValue": 40,
-                                    "flightStop_daysToGoValue": 40,
-                                    "flightStop_hoursToGoText": "49:17",
-                                    "flightStop_hoursToGoValue": 49.28324,
-                                    "hoursToGoText": "44:17",
-                                    "hoursToGoValue": 44.28324,
-                                },
-                                "model": "Cessna 172",
-                                "regnr": "SE-ABC",
-                            }
-                        ]
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
 
-        # Use context manager to handle session
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.getObjects()
+class TestMyWebLogClientV5(unittest.IsolatedAsyncioTestCase):
+    """Test suite for MyWebLogClient v5 REST endpoints."""
 
-        # Verify response
-        self.assertEqual(
-            result,
-            {
-                "Object": [
-                    {
-                        "ID": self.airplaneId,
-                        "activeRemarks": [
-                            {
-                                "remarkBy": "Test Pilot",
-                                "remarkCategory": "2",
-                                "remarkDate": "2024-12-31",
-                                "remarkID": "25026",
-                                "remarkText": (
-                                    "Kraftiga vibrationer efter start, "
-                                    "svajande varvtal"
-                                ),
-                            }
-                        ],
-                        "club_id": "123",
-                        "clubname": "Test Club",
-                        "flightData": {
-                            "initial": {
-                                "airborne": "2854.9833",
-                                "block": None,
-                                "landings": "10000",
-                                "tachtime": "0.40",
-                            },
-                            "logged": {
-                                "airborne": "3896.73346",
-                                "block": "4655.71658",
-                                "landings": "9180",
-                                "tachtime": "3962.80000",
-                            },
-                            "total": {
-                                "airborne": 6751.71676,
-                                "airborneText": "6751:43",
-                                "block": 4655.71658,
-                                "blockText": "4655:43",
-                                "hobbsMeter": "0.0000",
-                                "hobbsMeterText": "0.0",
-                                "landings": 19180,
-                                "landingsText": "19180",
-                                "tachoMeter": "6759.1000",
-                                "tachoMeterText": "6759.1",
-                                "tachtime": 3963.2,
-                                "tachtimeText": "3963.2",
-                            },
-                        },
-                        "ftData": {
-                            "airborne": "6751.71676",
-                            "block": "0",
-                            "landings": 19180,
-                            "tachometer": "6759.1000",
-                            "tachtime": "3963.2",
-                        },
-                        "maintTimeDate": {
-                            "daysToGoValue": 40,
-                            "flightStop_daysToGoValue": 40,
-                            "flightStop_hoursToGoText": "49:17",
-                            "flightStop_hoursToGoValue": 49.28324,
-                            "hoursToGoText": "44:17",
-                            "hoursToGoValue": 44.28324,
-                        },
-                        "model": "Cessna 172",
-                        "regnr": "SE-ABC",
-                    }
-                ]
-            },
-        )
+    def setUp(self) -> None:
+        self.session = AsyncMock(spec=aiohttp.ClientSession)
+        self.auth = DummyAuth(self.session)
+        self.client = MyWebLogClient(auth=self.auth)
+        self.airplane_id = 5599
 
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "includeObjectThumbnail": 0,
-                "qtype": "GetObjects",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
+    async def asyncTearDown(self) -> None:
+        await self.client.close()
 
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_bookings_success(self, mock_post):
-        """Test successful retrieval of bookings with default parameters."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetBookings",
-                    "result": {
-                        "bookings": [
-                            {
-                                "ID": 101,
-                                "ac_id": self.airplaneId,
-                                "regnr": "SE-ABC",
-                                "bStart": "2025-04-18 08:00:00",
-                                "bEnd": "2025-04-18 10:00:00",
-                                "fullname": "Test User",
-                            }
-                        ],
-                        "sunData": {
-                            "refAirport": {"name": "Test Airport"},
-                            "dates": {
-                                "2025-04-18": {"sunrise": "06:00", "sunset": "20:00"}
-                            },
-                        },
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        # Use context manager to handle session
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            today = date.today().strftime("%Y-%m-%d")
-            today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
-            result = await client.getBookings(
-                self.airplaneId, mybookings=True, includeSun=True
-            )
-
-        # Verify response
-        self.assertEqual(
-            result,
-            {
-                "bookings": [
-                    {
-                        "ID": 101,
-                        "ac_id": self.airplaneId,
-                        "regnr": "SE-ABC",
-                        "bStart": "2025-04-18 08:00:00",
-                        "bEnd": "2025-04-18 10:00:00",
-                        "fullname": "Test User",
-                    }
-                ],
-                "sunData": {
-                    "refAirport": {"name": "Test Airport"},
-                    "dates": {"2025-04-18": {"sunrise": "06:00", "sunset": "20:00"}},
-                },
-            },
-        )
-
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "ac_id": self.airplaneId,
-                "mybookings": 1,
-                "from_date": today,
-                "to_date": today_plus_tree,
-                "includeSun": 1,
-                "qtype": "GetBookings",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_create_booking_success(self, mock_post):
-        """Test successful creation of a booking."""
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "CreateBooking",
-                    "result": {
-                        "infoMessageTitle": "Booking created",
-                        "infoMessage": "Your booking has been confirmed",
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.createBooking(
-                ac_id=1118,
-                bStart="2025-05-01T10:00+02:00",
-                bEnd="2025-05-01T12:00+02:00",
-                fritext="Test flight",
-                expectedAirborne=2.0,
-                platserkvar=1,
-            )
-        self.assertIn("infoMessageTitle", result)
-        self.assertEqual(result["infoMessageTitle"], "Booking created")
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "ac_id": 1118,
-                "bStart": "2025-05-01T10:00+02:00",
-                "bEnd": "2025-05-01T12:00+02:00",
-                "fritext": "Test flight",
-                "expectedAirborne": 2.0,
-                "platserkvar": 1,
-                "qtype": "CreateBooking",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_cut_booking_success(self, mock_post):
-        """Test successful cut of a booking."""
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "CutBooking",
-                    "result": {
-                        "infoMessageTitle": "Booking cut",
-                        "infoMessage": "Booking has been cut successfully",
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.cutBooking(booking_id="1234")
-        self.assertIn("infoMessageTitle", result)
-        self.assertEqual(result["infoMessageTitle"], "Booking cut")
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "bookingID": "1234",
-                "qtype": "CutBooking",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_delete_booking_success(self, mock_post):
-        """Test successful deletion of a booking."""
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "DeleteBooking",
-                    "result": {
-                        "infoMessageTitle": "Booking deleted",
-                        "infoMessage": "Booking has been deleted successfully",
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.deleteBooking(booking_id="1234")
-        self.assertIn("infoMessageTitle", result)
-        self.assertEqual(result["infoMessageTitle"], "Booking deleted")
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "bookingID": "1234",
-                "qtype": "DeleteBooking",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_bookings_no_sun_data(self, mock_post):
-        """Test retrieval of bookings with includeSun=False."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetBookings",
-                    "result": {
-                        "bookings": [
-                            {
-                                "ID": 102,
-                                "ac_id": self.airplaneId,
-                                "regnr": "SE-XYZ",
-                                "bStart": "2025-04-18 09:00:00",
-                                "bEnd": "2025-04-18 11:00:00",
-                                "fullname": "Test User",
-                            }
-                        ]
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        # Use context manager to handle session
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            today = date.today().strftime("%Y-%m-%d")
-            today_plus_tree = (date.today() + timedelta(days=3)).strftime("%Y-%m-%d")
-            result = await client.getBookings(
-                self.airplaneId, mybookings=False, includeSun=False
-            )
-
-        # Verify response
-        self.assertEqual(
-            result,
-            {
-                "bookings": [
-                    {
-                        "ID": 102,
-                        "ac_id": self.airplaneId,
-                        "regnr": "SE-XYZ",
-                        "bStart": "2025-04-18 09:00:00",
-                        "bEnd": "2025-04-18 11:00:00",
-                        "fullname": "Test User",
-                    }
-                ]
-            },
-        )
-
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "ac_id": self.airplaneId,
-                "mybookings": 0,
-                "from_date": today,
-                "to_date": today_plus_tree,
-                "includeSun": 0,
-                "qtype": "GetBookings",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_balance_success(self, mock_post):
-        """Test successful retrieval of user balance."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetBalance",
-                    "result": {
-                        "Balance": "1500.75",
-                        "Efternamn": "User",
-                        "Fornamn": "Test",
-                        "Partikel": None,
-                        "Result": "OK",
-                        "currency_symbol": "kr",
-                        "fullname": "Test User",
-                        "int_curr_symbol": "SEK",
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        # Use context manager to handle session
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.getBalance()
-
-        # Verify response
-        self.assertEqual(
-            result,
-            {
-                "Balance": "1500.75",
-                "Efternamn": "User",
-                "Fornamn": "Test",
-                "Partikel": None,
-                "Result": "OK",
-                "currency_symbol": "kr",
-                "fullname": "Test User",
-                "int_curr_symbol": "SEK",
-            },
-        )
-
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "qtype": "GetBalance",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_myweblog_post_failure(self, mock_post):
-        """Test handling of HTTP request failure."""
-        # Mock API failure
-        mock_response = AsyncMock()
-        mock_response.status = 400
-        mock_response.real_url = self.base_url
-        mock_response.text = AsyncMock(return_value="Bad Request")
-        error = aiohttp.ClientResponseError(
-            request_info=Mock(), history=(), status=400, message="Bad Request"
-        )
-        mock_response.raise_for_status = Mock(side_effect=error)
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        # Redirect stderr to capture error messages
-        # This is a workaround to capture the error message
-        stderr = sys.stderr
-        sys.stderr = io.StringIO()
-        try:
-            # Use context manager to handle session
-            async with MyWebLogClient(
-                self.username, self.password, self.app_token
-            ) as client:
-                client.app_token = "test_token"  # set directly to avoid extra API call
-                with self.assertRaises(aiohttp.ClientResponseError) as context:
-                    await client.getObjects()
-                self.assertEqual(context.exception.status, 400)
-                self.assertIn("Bad Request", str(context.exception))
-        finally:
-            sys.stderr = stderr
-
-    @patch("aiohttp.ClientSession")
-    async def test_close(self, mock_session):
-        """Test session closure."""
-        mock_session_instance = mock_session.return_value
-        mock_session_instance.close = AsyncMock()
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            pass  # No explicit close call; rely on context manager
-
-        mock_session_instance.close.assert_awaited_once()
-        # Verify session is None after closure
-        self.assertIsNone(client.session)
-
-    @patch("aiohttp.ClientSession")
-    async def test_context_manager(self, mock_session):
-        """Test context manager functionality."""
-        mock_session_instance = mock_session.return_value
-        mock_session_instance.close = AsyncMock()
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            self.assertIsInstance(client, MyWebLogClient)
-
-        mock_session_instance.close.assert_awaited_once()
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_flight_log_reversed_success(self, mock_post):
-        """Test successful retrieval of reversed flight logs."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetFlightLogReversed",
-                    "result": {
-                        "FlightLog": [
-                            {
-                                "flight_datum": "2024-04-30",
-                                "ac_id": 1118,
-                                "regnr": "LN-ABC",
-                                "fullname": "Test Pilot",
-                                "departure": "ESTA",
-                                "via": None,
-                                "arrival": "ESTL",
-                                "block_start": "10:00",
-                                "block_end": "11:00",
-                                "block_total": "1.0000",
-                                "airborne_start": "12:00",
-                                "airborne_end": "13:00",
-                                "airborne_total": "1.0000",
-                                "tach_start": "12:00",
-                                "tach_end": "13:00",
-                                "tach_total": "1.0000",
-                                "flights": 1,
-                                "distance": 150.5,
-                                "nature_beskr": "PRIVAT",
-                                "comment": "Test comment",
-                                "rowID": 12345,
-                            }
-                        ]
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.getFlightLogReversed(limit=10, myflights=True)
-
-        self.assertIn("FlightLog", result)
-        self.assertIsInstance(result["FlightLog"], list)
-        self.assertGreater(len(result["FlightLog"]), 0)
-        flight = result["FlightLog"][0]
-        self.assertEqual(flight["flight_datum"], "2024-04-30")
-        self.assertEqual(flight["ac_id"], 1118)
-        self.assertEqual(flight["regnr"], "LN-ABC")
-        self.assertEqual(flight["departure"], "ESTA")
-        self.assertEqual(flight["arrival"], "ESTL")
-        self.assertEqual(flight["airborne_total"], "1.0000")
-        self.assertEqual(flight["nature_beskr"], "PRIVAT")
-        self.assertEqual(flight["comment"], "Test comment")
-        self.assertEqual(flight["tach_total"], "1.0000")
-        self.assertEqual(flight["distance"], 150.5)
-
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "limit": 10,
-                "myflights": 1,
-                "qtype": "GetFlightLogReversed",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_flight_log_success(self, mock_post):
-        """Test successful retrieval of flight logs."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetFlightLog",
-                    "result": {
-                        "FlightLog": [
-                            {
-                                "flight_datum": "2024-04-30",
-                                "ac_id": 1118,
-                                "regnr": "LN-ABC",
-                                "fullname": "Test Pilot",
-                                "departure": "ESTA",
-                                "via": None,
-                                "arrival": "ESTL",
-                                "block_start": "10:00",
-                                "block_end": "11:00",
-                                "block_total": "1.0000",
-                                "airborne_start": "12:00",
-                                "airborne_end": "13:00",
-                                "airborne_total": "1.0000",
-                                "tach_start": "12:00",
-                                "tach_end": "13:00",
-                                "tach_total": "1.0000",
-                                "flights": 1,
-                                "distance": 150.5,
-                                "nature_beskr": "PRIVAT",
-                                "comment": "Test comment",
-                                "rowID": 12345,
-                            }
-                        ]
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.getFlightLog(limit=15)
-
-        self.assertIn("FlightLog", result)
-        self.assertIsInstance(result["FlightLog"], list)
-        self.assertGreater(len(result["FlightLog"]), 0)
-        flight = result["FlightLog"][0]
-        self.assertEqual(flight["flight_datum"], "2024-04-30")
-        self.assertEqual(flight["ac_id"], 1118)
-        self.assertEqual(flight["regnr"], "LN-ABC")
-        self.assertEqual(flight["departure"], "ESTA")
-        self.assertEqual(flight["arrival"], "ESTL")
-        self.assertEqual(flight["airborne_total"], "1.0000")
-        self.assertEqual(flight["nature_beskr"], "PRIVAT")
-        self.assertEqual(flight["comment"], "Test comment")
-        self.assertEqual(flight["tach_total"], "1.0000")
-        self.assertEqual(flight["distance"], 150.5)
-
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "limit": 15,
-                "myflights": 0,
-                "qtype": "GetFlightLog",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.post")
-    async def test_get_transactions_success(self, mock_post):
-        """Test successful retrieval of transactions."""
-        # Mock API response
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        mock_response.text = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "APIVersion": "3.0.0",
-                    "qType": "GetTransactions",
-                    "result": {
-                        "Balance": 1234.56,
-                        "BalanceAtToDate": 1234.56,
-                        "UsedCountLimit": 1,
-                        "currency_symbol": "kr",
-                        "int_curr_symbol": "SEK",
-                        "Transaction": [
-                            {
-                                "datum": "2024-04-30",
-                                "created": "2024-04-30 14:30:00",
-                                "belopp": -100.00,
-                                "comment": "Landing fee",
-                                "bookedby_fullname": "giroDirect",
-                            }
-                        ],
-                    },
-                }
-            )
-        )
-        mock_response.raise_for_status = Mock()
-        mock_post.return_value.__aenter__.return_value = mock_response
-
-        async with MyWebLogClient(
-            self.username, self.password, self.app_token
-        ) as client:
-            await client.obtainAppToken("Dummy")
-            result = await client.getTransactions(limit=30)
-
-        # Check response structure
-        self.assertIn("Balance", result)
-        self.assertIn("Transaction", result)
-        self.assertIn("BalanceAtToDate", result)
-        self.assertIn("UsedCountLimit", result)
-        self.assertEqual(result["Balance"], 1234.56)
-        self.assertIsInstance(result["Transaction"], list)
-        self.assertGreater(len(result["Transaction"]), 0)
-        self.assertEqual(result["Transaction"][0]["bookedby_fullname"], "giroDirect")
-        self.assertEqual(result["Transaction"][0]["belopp"], -100.00)
-        self.assertEqual(result["Transaction"][0]["datum"], "2024-04-30")
-        self.assertEqual(result["Transaction"][0]["created"], "2024-04-30 14:30:00")
-        self.assertEqual(result["Transaction"][0]["comment"], "Landing fee")
-
-        # Verify request
-        mock_post.assert_called_once_with(
-            self.base_url,
-            data={
-                "limit": 30,
-                "qtype": "GetTransactions",
-                "mwl_u": self.username,
-                "mwl_p": self.password,
-                "returnType": "JSON",
-                "charset": "UTF-8",
-                "app_token": self.app_token,
-                "language": "se",
-            },
-        )
-
-    @patch("aiohttp.ClientSession.get")
-    @patch("aiohttp.ClientSession.post")
-    @patch("pyMyweblog.client.MyWebLogClient.getBalance", new_callable=AsyncMock)
-    async def test_obtain_app_token(self, mock_get_balance, mock_post, mock_get):
-        """Test the obtainAppToken method and validate GetBalance POST request."""
-
-        # Mock GET request to obtain app_token
-        mock_get_response = AsyncMock()
-        mock_get_response.status = 200
-        mock_get_response.json = AsyncMock(return_value={"app_token": "mock_app_token"})
-        mock_get_response.raise_for_status = Mock()
-        mock_get_response.real_url = self.token_url
-        mock_get.return_value.__aenter__.return_value = mock_get_response
-
-        # Mock getBalance call
-        getBalanceResult = {
-            "Balance": "1500.75",
-            "Efternamn": "User",
-            "Fornamn": "Test",
-            "Partikel": None,
-            "Result": "OK",
-            "currency_symbol": "kr",
-            "fullname": "Test User",
-            "int_curr_symbol": "SEK",
+    async def test_get_client(self) -> None:
+        """Test GET /client."""
+        self.auth.request.return_value = {
+            "id": 9,
+            "name": "Marcus Testklient",
+            "app_name": "Marcus Testklient",
+            "rate_limit_per_minute": 600,
         }
-        mock_get_balance.return_value = getBalanceResult
+        res = await self.client.get_client()
+        self.auth.request.assert_called_once_with("GET", "/client")
+        self.assertEqual(res["id"], 9)
+        self.assertEqual(res["app_name"], "Marcus Testklient")
 
-        # Mock POST request to log app_token
-        mock_post_response = AsyncMock()
-        mock_post_response.status = 200
-        mock_post_response.raise_for_status = Mock()
-        mock_post_response.real_url = self.token_url
-        mock_post.return_value.__aenter__.return_value = mock_post_response
+    async def test_get_me_and_get_balance(self) -> None:
+        """Test GET /me and legacy getBalance() wrapper."""
+        me_data = {
+            "data": {
+                "id": 66311,
+                "username": "3-marcus",
+                "name": {
+                    "first": "Marcus",
+                    "last": "Karlsson",
+                    "full": "Marcus Karlsson",
+                },
+                "balance": 1500.50,
+                "currency": {"code": "SEK", "symbol": "kr"},
+                "organization": {"id": 1, "name": "Kalmar Flygklubb"},
+            }
+        }
+        self.auth.request.return_value = me_data
 
-        # Initialize client with app_token=None
-        async with MyWebLogClient(
-            self.username, self.password, app_token=None
-        ) as client:
-            # Obtain app_token
-            app_token = await client.obtainAppToken("mock_app_secret")
+        # Test get_me()
+        res_me = await self.client.get_me()
+        self.auth.request.assert_called_with("GET", "/me")
+        self.assertEqual(res_me["data"]["id"], 66311)
 
-            # Verify app_token was set
-            self.assertEqual(client.app_token, "mock_app_token")
-            self.assertEqual(app_token, "mock_app_token")
+        # Test legacy getBalance()
+        res_bal = await self.client.getBalance()
+        self.assertEqual(res_bal["fullname"], "Marcus Karlsson")
+        self.assertEqual(res_bal["Balance"], 1500.50)
+        self.assertEqual(res_bal["currency_symbol"], "kr")
+        self.assertEqual(res_bal["int_curr_symbol"], "SEK")
 
-        # Verify GET request to obtain app_token
-        mock_get.assert_called_once_with(
-            self.token_url,
-            headers={"X-app-secret": "mock_app_secret"},
+    async def test_get_profiles_and_switch(self) -> None:
+        """Test GET /me/profiles and switch_profile()."""
+        self.auth.request.return_value = {
+            "data": [
+                {"id": 1, "organization": {"name": "Club A"}},
+                {"id": 2, "organization": {"name": "Club B"}},
+            ]
+        }
+        profiles = await self.client.get_profiles()
+        self.assertEqual(len(profiles["data"]), 2)
+
+        # Switch profile
+        switch_res = await self.client.switch_profile(2)
+        self.auth.async_refresh_tokens.assert_called_once_with(profile_id="2")
+        self.assertEqual(switch_res["access_token"], "new_tok")
+
+    async def test_get_organization(self) -> None:
+        """Test GET /organization."""
+        self.auth.request.return_value = {
+            "data": {
+                "id": 1,
+                "name": "Kalmar Flygklubb",
+                "timezone": "Europe/Stockholm",
+                "currency": {"code": "SEK", "symbol": "kr"},
+            }
+        }
+        res = await self.client.get_organization()
+        self.auth.request.assert_called_once_with("GET", "/organization")
+        self.assertEqual(res["data"]["timezone"], "Europe/Stockholm")
+
+    async def test_get_objects_and_alias(self) -> None:
+        """Test GET /objects and time_summary compatibility."""
+        mock_objects = {
+            "data": [
+                {
+                    "id": self.airplane_id,
+                    "registration": "SE-DUM",
+                    "model": {"designator": "P28A", "name": "Piper PA-28"},
+                    "time_summary": {
+                        "total": {
+                            "airborne": 1004.58333,
+                            "airborne_formatted": "1004:35",
+                            "block": 1006.91666,
+                            "block_formatted": "1006:55",
+                            "tach": 1006,
+                            "tach_formatted": "1006.0",
+                            "landings": 137,
+                        }
+                    },
+                    "active_remarks": [],
+                }
+            ]
+        }
+        self.auth.request.return_value = mock_objects
+
+        res = await self.client.get_objects()
+        self.auth.request.assert_called_with(
+            "GET",
+            "/objects",
+            params={"include": "status,active_remarks,time_summary"},
+        )
+        self.assertEqual(len(res["data"]), 1)
+        # Check backward-compatible Object alias
+        self.assertEqual(len(res["Object"]), 1)
+        self.assertEqual(res["data"][0]["registration"], "SE-DUM")
+
+        time_sum = res["data"][0]["time_summary"]["total"]
+        self.assertEqual(time_sum["airborne"], 1004.58333)
+        self.assertEqual(time_sum["landings"], 137)
+
+        # Legacy alias test
+        res_legacy = await self.client.getObjects()
+        self.assertEqual(len(res_legacy["Object"]), 1)
+
+    async def test_get_bookings_and_aliases(self) -> None:
+        """Test GET /bookings with params and legacy aliases."""
+        self.auth.request.return_value = {
+            "data": [
+                {
+                    "id": 101,
+                    "start_at": "2026-10-28T10:00:00Z",
+                    "end_at": "2026-10-28T12:00:00Z",
+                    "object": {"id": self.airplane_id, "registration": "SE-DUM"},
+                }
+            ]
+        }
+
+        # v5 method call
+        res = await self.client.get_bookings(
+            object_id=self.airplane_id,
+            date_from="2026-10-28",
+            date_to="2026-10-31",
+            mine=True,
+        )
+        self.auth.request.assert_called_with(
+            "GET",
+            "/bookings",
+            params={
+                "object_id": self.airplane_id,
+                "date_from": "2026-10-28",
+                "date_to": "2026-10-31",
+                "mine": "true",
+            },
+        )
+        self.assertEqual(len(res["data"]), 1)
+        self.assertEqual(len(res["Booking"]), 1)
+
+        # Legacy getBookingsWithDates
+        await self.client.getBookingsWithDates(
+            airplaneId=self.airplane_id,
+            fromDate=date(2026, 10, 28),
+            toDate=date(2026, 10, 30),
+            mybookings=False,
+        )
+        self.auth.request.assert_called_with(
+            "GET",
+            "/bookings",
+            params={
+                "object_id": self.airplane_id,
+                "date_from": "2026-10-28",
+                "date_to": "2026-10-30",
+            },
         )
 
-        # Verify GET request to obtain app_token
-        mock_get.assert_called_once_with(
-            self.token_url,
-            headers={"X-app-secret": "mock_app_secret"},
+    async def test_create_cut_cancel_booking(self) -> None:
+        """Test POST /bookings, /bookings/{id}/cut, and /bookings/{id}/cancel."""
+        # Create booking
+        self.auth.request.return_value = {"id": 105, "status": "confirmed"}
+        create_res = await self.client.create_booking(
+            object_id=self.airplane_id,
+            start_at="2026-10-29T10:00:00+02:00",
+            end_at="2026-10-29T12:00:00+02:00",
+            comment="Test flight",
+            expected_airborne=1.5,
+        )
+        self.assertEqual(create_res["id"], 105)
+        self.auth.request.assert_called_with(
+            "POST",
+            "/bookings",
+            json={
+                "object_id": self.airplane_id,
+                "start_at": "2026-10-29T10:00:00+02:00",
+                "end_at": "2026-10-29T12:00:00+02:00",
+                "comment": "Test flight",
+                "expected_airborne": 1.5,
+            },
         )
 
-        # Verify POST request to log app_token
-        mock_post.assert_called_once_with(
-            self.token_url,
-            headers={"X-app-secret": "mock_app_secret"},
-            json=getBalanceResult,
+        # Legacy createBooking alias
+        await self.client.createBooking(
+            ac_id=self.airplane_id,
+            bStart="2026-10-29T10:00:00+02:00",
+            bEnd="2026-10-29T12:00:00+02:00",
+            fritext="Alias flight",
+            expectedAirborne=2.0,
+            platserkvar=3,
+        )
+        self.auth.request.assert_called_with(
+            "POST",
+            "/bookings",
+            json={
+                "object_id": self.airplane_id,
+                "start_at": "2026-10-29T10:00:00+02:00",
+                "end_at": "2026-10-29T12:00:00+02:00",
+                "comment": "Alias flight",
+                "expected_airborne": 2.0,
+                "seats_left": 3,
+            },
         )
 
+        # Cut booking
+        self.auth.request.return_value = {"id": 105, "cut": True}
+        cut_res = await self.client.cut_booking(105)
+        self.assertEqual(cut_res["cut"], True)
+        self.auth.request.assert_called_with("POST", "/bookings/105/cut")
 
-if __name__ == "__main__":
-    unittest.main()
+        # Cancel booking
+        self.auth.request.return_value = {"id": 105, "cancelled": True}
+        cancel_res = await self.client.cancel_booking(105, reason="Bad weather")
+        self.assertEqual(cancel_res["cancelled"], True)
+        self.auth.request.assert_called_with(
+            "POST", "/bookings/105/cancel", json={"reason": "Bad weather"}
+        )
+
+    async def test_flight_logs(self) -> None:
+        """Test GET /flightlogs and order parameters."""
+        self.auth.request.return_value = {
+            "data": [
+                {
+                    "id": 501,
+                    "date": "2026-10-25",
+                    "airborne_total": 1.2,
+                }
+            ]
+        }
+        logs_asc = await self.client.get_flight_logs(
+            object_id=self.airplane_id, order="asc"
+        )
+        self.auth.request.assert_called_with(
+            "GET",
+            "/flightlogs",
+            params={
+                "limit": 20,
+                "offset": 0,
+                "order": "asc",
+                "object_id": self.airplane_id,
+            },
+        )
+        self.assertEqual(len(logs_asc["FlightLog"]), 1)
+
+        # Legacy getFlightLogReversed (order="desc")
+        await self.client.getFlightLogReversed(ac_id=self.airplane_id, limit=10)
+        self.auth.request.assert_called_with(
+            "GET",
+            "/flightlogs",
+            params={
+                "limit": 10,
+                "offset": 0,
+                "order": "desc",
+                "object_id": self.airplane_id,
+            },
+        )
+
+    async def test_transactions(self) -> None:
+        """Test GET /transactions."""
+        self.auth.request.return_value = {
+            "data": [{"id": 901, "amount": -450.0, "comment": "Avgift"}]
+        }
+        res = await self.client.get_transactions(limit=15, include_details=True)
+        self.auth.request.assert_called_with(
+            "GET",
+            "/transactions",
+            params={"limit": 15, "offset": 0, "include": "details"},
+        )
+        self.assertEqual(len(res["Transaction"]), 1)
+
+    async def test_sun_times_and_expiry_dates(self) -> None:
+        """Test GET /sun-times and GET /me/expiry-dates."""
+        # Sun times
+        self.auth.request.return_value = {
+            "data": [{"date": "2026-10-28", "sunrise": "07:15", "sunset": "17:30"}]
+        }
+        sun = await self.client.get_sun_times(date_from="2026-10-28")
+        self.auth.request.assert_called_with(
+            "GET", "/sun-times", params={"date_from": "2026-10-28"}
+        )
+        self.assertEqual(len(sun["data"]), 1)
+
+        # Expiry dates
+        self.auth.request.return_value = {
+            "data": [{"id": 1, "name": "Medical Class 2", "expiry_date": "2027-05-01"}]
+        }
+        exp = await self.client.get_expiry_dates()
+        self.auth.request.assert_called_with("GET", "/me/expiry-dates")
+        self.assertEqual(exp["data"][0]["name"], "Medical Class 2")
+
+    async def test_session_lifecycle_and_deprecated_methods(self) -> None:
+        """Test client session lifecycle and deprecated obtainAppToken."""
+        # Deprecated obtainAppToken returns dummy without crashing
+        tok = await self.client.obtainAppToken("secret")
+        self.assertEqual(tok, "deprecated_v5")
+
+        # Standalone client without explicit auth closes owned session
+        with patch("aiohttp.ClientSession") as mock_session_cls:
+            mock_session = AsyncMock()
+            mock_session_cls.return_value = mock_session
+            standalone_client = MyWebLogClient(client_id="9")
+            self.assertTrue(standalone_client._owns_session)
+            await standalone_client.close()
+            mock_session.close.assert_called_once()
