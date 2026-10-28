@@ -1,254 +1,219 @@
-# pyMyweblog Python Library
+# pyMyweblog
 
-`pyMyweblog` is a Python library for interacting with the MyWebLog API, designed to fetch objects and bookings for aviation-related data. It is intended for use in Home Assistant integrations or other Python applications requiring access to MyWebLog services.
+`pyMyweblog` is an asynchronous Python client library for the **MyWebLog Mobile API v5** (`v5.25.0`), featuring **OAuth 2.1 + PKCE** authentication. It is built to power the [Home Assistant MyWebLog integration](https://github.com/faanskit/ha-myweblog) as well as standalone CLI tools and automation scripts for pilots and aero clubs.
+
+---
+
+## Features
+
+- **Modern API v5 REST Endpoints:** Direct asynchronous access to `/me`, `/objects`, `/bookings`, `/flightlogs`, `/transactions`, `/sun-times`, `/organization`, and `/me/expiry-dates`.
+- **OAuth 2.1 with PKCE (`S256`):**
+  - **Option 2 (Public Client):** Client ID only, no client secret required.
+  - **Option 1 (Confidential Client):** Client ID + Client Secret (supported for Home Assistant `application_credentials`).
+  - Single-use refresh token rotation with `asyncio.Lock` serialization.
+  - Local loopback server (`http://localhost:5173/callback`) for one-time interactive browser login in CLI/dev mode.
+- **Robust Error Handling:** Full RFC 9457 Problem Details (`application/problem+json`) mapping:
+  - `MyWebLogAuthError` (401 / OAuth error)
+  - `MyWebLogForbiddenError` (403)
+  - `MyWebLogNotFoundError` (404)
+  - `MyWebLogRateLimitError` (429 with `retry_after`)
+  - `MyWebLogMaintenanceError` (503 with maintenance code `10060` and `retry_after`)
+- **Transport Resilience:** Automatic single-retry recovery on stale keep-alive TCP connections (`aiohttp.ServerDisconnectedError`) and conditional `If-None-Match` / `304 Not Modified` ETag caching.
+- **Backward Compatibility:** Preserves legacy v3 helper aliases (`getObjects`, `getBookings`, `getBalance`, `getTransactions`, `getFlightLog`, etc.).
+
+---
 
 ## Installation
 
-Install the library via pip:
+Install the package via pip:
 
 ```bash
 pip install pyMyweblog
 ```
 
-Alternatively, for local development, clone the repository and install it in editable mode:
+Or for local development using [uv](https://docs.astral.sh/uv/):
 
 ```bash
 git clone https://github.com/faanskit/pyMyweblog.git
 cd pyMyweblog
-pip install -e .
+uv sync
 ```
 
 ---
 
 ## Project Structure
 
-- `pyMyweblog/` — Main package, contains the API client (`client.py`).
-- `scripts/myweblog.py` — Interactive CLI utility for querying MyWebLog API.
-- `tests/test_client.py` — Unit tests for the API client.
+```text
+pyMyweblog/
+├── pyMyweblog/
+│   ├── __init__.py         # Package exports & version (1.0.0)
+│   ├── auth.py             # OAuth 2.1 + PKCE, AbstractMyWebLogAuth, OAuth2PKCEAuth
+│   ├── client.py           # v5 REST MyWebLogClient & legacy aliases
+│   └── exceptions.py       # RFC 9457 Problem Details & error hierarchy
+├── scripts/
+│   ├── booking_cli.py      # Interactive aircraft booking management CLI
+│   ├── myweblog.py         # Multi-operation query CLI
+│   ├── reproduce_queue_bug.py # Live bug repro script and Markdown logger
+│   └── verify_m1_live.py   # Live OAuth 2.1 PKCE verification utility
+├── tests/
+│   ├── test_auth.py        # PKCE, exchange, lock rotation, ETag & error tests
+│   └── test_client.py      # v5 REST endpoints & backward-compatibility tests
+├── pyproject.toml          # Package configuration (PEP 621, black, build-system)
+└── .env.sample             # Sample environment configuration
+```
 
 ---
 
-## Prerequisites
+## Configuration (`.env`)
 
-To use the library or CLI, you need:
-- A valid MyWebLog username and password.
-- A valid **App Secret** (not app_token) for the MyWebLog API.
+For standalone scripts or local development, copy `.env.sample` to `.env`:
 
-Set these as environment variables:
-- `MYWEBLOG_USERNAME`
-- `MYWEBLOG_PASSWORD`
-- `APP_SECRET`
-
-## Usage
-
-### Interactive CLI Utility
-
-You can use the interactive CLI to fetch objects, bookings, balance, transactions, and flight logs:
-
-```bash
-python -m scripts.myweblog
+```env
+MYWEBLOG_CLIENT_ID=9
+MYWEBLOG_CLIENT_SECRET=mwlm1_your_secret_here   # Optional; omit for Public Client
+MYWEBLOG_REDIRECT_URI=http://localhost:5173/callback
+MYWEBLOG_AIRPLANE_ID=5599                      # Optional default aircraft ID
 ```
 
-You will be prompted to select an operation and, for bookings, to select an airplane. Make sure the required environment variables are set or exported before running.
+> **Note:** `.env` and `.myweblog_tokens.json` are excluded from git by `.gitignore` to prevent leaking tokens or credentials.
 
-### Booking CLI Utility (`scripts/booking_cli.py`)
+---
 
-This script provides an interactive command-line interface for managing airplane bookings via the MyWebLog API.
+## Interactive CLI Tools
+
+### 1. Interactive Booking CLI (`scripts/booking_cli.py`)
+
+Manage airplane bookings directly from your terminal:
+
+```bash
+uv run --project pyMyweblog python scripts/booking_cli.py
+```
 
 **Features:**
-- View available airplanes
-- Create new bookings with confirmation prompts
-- Delete your own bookings with confirmation prompts
-- User-friendly and structured output
+- On first launch, opens your browser to log in via OAuth 2.1 and saves tokens to `.myweblog_tokens.json`.
+- Displays active aircraft with models or categories (e.g. `SE-DUM (Aircraft)`).
+- Lists upcoming bookings for the next 7 days, highlighting your own bookings with `[YOURS]`.
+- Interactive creation of new bookings with custom dates, start times, and durations.
+- Cancellation and ending ("cutting") of active bookings with automatic list refresh.
 
-**How to Run:**
+### 2. Multi-Operation Query CLI (`scripts/myweblog.py`)
 
-```bash
-python -m scripts.booking_cli
-```
-
-**Requirements:**
-- Environment variables must be set: `MYWEBLOG_USERNAME`, `MYWEBLOG_PASSWORD`, `APP_SECRET`
-- The `questionary` package must be installed for interactive prompts:
+Quickly inspect API v5 data:
 
 ```bash
-pip install questionary
+# Interactive menu:
+uv run --project pyMyweblog python scripts/myweblog.py
+
+# Or via command line flags:
+uv run --project pyMyweblog python scripts/myweblog.py -o   # GetObjects
+uv run --project pyMyweblog python scripts/myweblog.py -m   # GetMe
+uv run --project pyMyweblog python scripts/myweblog.py -b   # GetBookings
+uv run --project pyMyweblog python scripts/myweblog.py -t   # GetTransactions
+uv run --project pyMyweblog python scripts/myweblog.py -s   # GetSunTimes
+uv run --project pyMyweblog python scripts/myweblog.py -e   # GetExpiryDates
 ```
 
-**Usage Flow:**
-- On start, you will be welcomed and asked to select an airplane
-- You can view, create, or delete bookings for the selected airplane
-- All critical actions (creation/deletion) require confirmation before proceeding
-- Exit the CLI at any time by selecting "Exit" from the menu
+---
 
-### Library Usage: MyWebLogClient
+## Python Library Usage
 
-You can also use the API client in your own Python code:
+### Standalone Usage (with `OAuth2PKCEAuth`)
 
 ```python
-from pyMyweblog.client import MyWebLogClient
 import asyncio
-import os
+import aiohttp
+from pyMyweblog import MyWebLogClient, OAuth2PKCEAuth
 
 async def main():
-    client = MyWebLogClient(
-        username=os.getenv("MYWEBLOG_USERNAME"),
-        password=os.getenv("MYWEBLOG_PASSWORD"),
-        app_token=None,  # Will be fetched using APP_SECRET
-    )
-    await client.obtainAppToken(os.getenv("APP_SECRET"))
-    objects = await client.getObjects()
-    print(objects)
-    await client.close()
+    async with aiohttp.ClientSession() as websession:
+        auth = OAuth2PKCEAuth(
+            websession=websession,
+            client_id="9",
+            client_secret="mwlm1_your_secret",  # Optional for Option 1
+            redirect_uri="http://localhost:5173/callback",
+            token_cache_path=".myweblog_tokens.json",
+        )
+
+        # Trigger browser login if no cached refresh token exists
+        if not auth.refresh_token:
+            await auth.async_interactive_login()
+
+        client = MyWebLogClient(auth=auth)
+
+        # Fetch current user
+        me = await client.get_me()
+        user = me.get("data", me)
+        print("Logged in as:", user["name"]["full"])
+
+        # Fetch aircraft
+        objects = await client.get_objects()
+        for obj in objects.get("data", []):
+            time_total = obj.get("time_summary", {}).get("total", {})
+            print(f"{obj['registration']}: Tach {time_total.get('tach')}, Landings {time_total.get('landings')}")
 
 asyncio.run(main())
 ```
 
-## Testing
+### Custom Auth Bridge (e.g. Home Assistant `OAuth2Session`)
 
-Unit tests are located in `tests/test_client.py` and use the `unittest` framework. To run all tests:
+Subclass `AbstractMyWebLogAuth` to connect `MyWebLogClient` to any external token manager:
 
-```bash
-python -m unittest discover tests
+```python
+from aiohttp import ClientSession
+from pyMyweblog import AbstractMyWebLogAuth, MyWebLogClient
+
+class HomeAssistantAuthBridge(AbstractMyWebLogAuth):
+    def __init__(self, websession: ClientSession, oauth_session) -> None:
+        super().__init__(websession)
+        self._oauth_session = oauth_session
+
+    async def async_get_access_token(self) -> str:
+        await self._oauth_session.async_ensure_token_valid()
+        return str(self._oauth_session.token["access_token"])
+
+# Instantiate client:
+# client = MyWebLogClient(auth=HomeAssistantAuthBridge(session, oauth_session))
 ```
-
-You can also run a specific test file:
-
-```bash
-python -m unittest tests.test_client
-```
-
-### Requirements
-
-For development and running tests, install all dependencies (including test and CLI requirements):
-
-```bash
-pip install -e .[dev]
-```
-
-If you only want to use the CLI utility, you must also install `questionary`:
-
-```bash
-pip install questionary
-```
-
-## Development
-
-### Setting Up the Development Environment
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/faanskit/pyMyweblog.git
-   cd pyMyweblog
-   ```
-
-2. **Create and activate a virtual environment**:
-   ```bash
-   python -m venv venv
-   # On Unix/macOS:
-   source venv/bin/activate
-   # On Windows:
-   .\venv\Scripts\activate
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   pip install -e .[dev]
-   ```
-
-4. **Format and lint your code**:
-   ```bash
-   black .
-   flake8 .
-   ```
-
-5. **Run unit tests**:
-   ```bash
-   python -m unittest discover tests
-   ```
-
-### Modifying the Code
-
-- The main API client is in `pyMyweblog/client.py`.
-- Add or update methods in `MyWebLogClient` for additional API endpoints as needed.
-- The CLI utility is in `scripts/myweblog.py` and can be extended for more interactive features.
-
-## CI/CD and Publishing to PyPI and TestPyPI
-
-This project uses **GitHub Actions** to automatically build and publish the package to **TestPyPI** and **PyPI**. Two separate workflows are configured:
 
 ---
 
-### 🔁 Publishing to TestPyPI
+## Development & Testing
 
-This workflow runs **on every push to `main`** _if_ the commit message contains `[dev-release]`.
+### Running Tests
 
-#### How to trigger a TestPyPI release:
+Run the full unit test suite (20 tests covering auth, PKCE, lock rotation, ETag, and REST endpoints):
 
-1. **Update the version in `pyproject.toml`**  
-   Use a development version (ending in `.devN`), for example:
-   ```toml
-   version = "0.2.0.dev1"
-   ```
+```bash
+uv run pytest tests
+```
 
-2. **Commit and push with a trigger message**:
-   ```bash
-   git add pyproject.toml
-   git commit -m "test release 0.2.0.dev1 [dev-release]"
-   git push origin main
-   ```
+### Linting & Formatting
 
-3. The workflow will run and upload the package to:  
-   [https://test.pypi.org/project/pyMyweblog](https://test.pypi.org/project/pyMyweblog)
+Ensure compliance with PEP 8 and project style:
 
----
+```bash
+# Check formatting with Black (line-length: 88)
+uv run black --check pyMyweblog scripts tests
 
-### 🚀 Publishing to PyPI (Production)
+# Format code
+uv run black pyMyweblog scripts tests
 
-This workflow runs **only when a GitHub Release is published**. Use this for stable releases (i.e., versions without `.dev`).
-
-#### How to publish a production release:
-
-1. **Update the version in `pyproject.toml`**, for example:
-   ```toml
-   version = "0.2.0"
-   ```
-
-2. **Commit and push**:
-   ```bash
-   git add pyproject.toml
-   git commit -m "release 0.2.0"
-   git push origin main
-   ```
-
-3. **Create a GitHub Release**:
-   - Go to [Releases](https://github.com/faanskit/pyMyweblog/releases)
-   - Click **"Draft a new release"**
-   - Tag: `v0.2.0`
-   - Title/message: `Release 0.2.0`
-   - Click **"Publish release"**
-
-4. The workflow will run and upload the package to:  
-   [https://pypi.org/project/pyMyweblog](https://pypi.org/project/pyMyweblog)
+# Lint with Flake8
+uv run flake8 --config .flake8 pyMyweblog scripts tests
+```
 
 ---
 
-### 🔐 API Tokens
+## Publishing to PyPI
 
-To enable publishing from CI/CD, you need to configure the following GitHub Secrets:
+This repository uses GitHub Actions for automated publishing:
 
-- `TEST_PYPI_API_TOKEN` – from [TestPyPI](https://test.pypi.org/manage/account/)
-- `PYPI_API_TOKEN` – from [PyPI](https://pypi.org/manage/account/)
+- **TestPyPI:** Pushes to `main` with commit message containing `[dev-release]`.
+- **PyPI (Production):** Triggered on creating and publishing a GitHub Release with tag `v1.0.0`.
 
-Add these under:  
-**GitHub Repo → Settings → Secrets and variables → Actions → New repository secret**
-
-## Contributing
-
-Contributions are welcome! Please submit issues or pull requests to the [GitHub repository](https://github.com/faanskit/pyMyweblog).
+---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-For support, contact the maintainer at [marcus.karlsson@usa.net].
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Maintainer: Marcus Karlsson (<marcus.karlsson@usa.net>)
