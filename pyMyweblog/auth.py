@@ -27,6 +27,7 @@ from .exceptions import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.myweblog.se/mobile/v5"
+MAIN_API_BASE_URL = "https://api.myweblog.se/main/v5"
 DEFAULT_REDIRECT_URI = "http://localhost:5173/callback"
 
 
@@ -527,3 +528,108 @@ class OAuth2PKCEAuth(AbstractMyWebLogAuth):
             return tokens
         finally:
             await runner.cleanup()
+
+
+class ClientCredentialsAuth(AbstractMyWebLogAuth):
+    """OAuth 2.0 Client Credentials authentication handler for MyWebLog Main API.
+
+    Used for server-to-server integrations (e.g. club-wide monitoring, engine heaters)
+    where access tokens are automatically fetched and renewed indefinitely without
+    requiring interactive browser login.
+    """
+
+    def __init__(
+        self,
+        websession: aiohttp.ClientSession,
+        client_id: str | int,
+        client_secret: str,
+        base_url: str = MAIN_API_BASE_URL,
+        language: str | None = None,
+    ) -> None:
+        """Initialize ClientCredentialsAuth handler."""
+        super().__init__(websession=websession, base_url=base_url, language=language)
+        self.client_id = str(client_id).strip()
+        self.client_secret = str(client_secret).strip()
+        self.access_token: str | None = None
+        self.expires_at: float | None = None
+        self.scope: str | None = None
+        self._refresh_lock = asyncio.Lock()
+
+    def _is_token_expired(self) -> bool:
+        """Check if current access token is missing or expiring within 60 seconds."""
+        if not self.access_token:
+            return True
+        if self.expires_at and time.time() >= self.expires_at - 60:
+            return True
+        return False
+
+    async def async_get_access_token(self) -> str:
+        """Return a valid access token, automatically fetching a new one if expired."""
+        if self._is_token_expired():
+            async with self._refresh_lock:
+                if self._is_token_expired():
+                    await self._async_fetch_access_token()
+
+        if not self.access_token:
+            raise MyWebLogAuthError("Could not obtain access token.")
+        return self.access_token
+
+    async def _async_fetch_access_token(self) -> dict[str, Any]:
+        """Fetch a new access token using client_credentials grant."""
+        url = f"{self.base_url}/oauth/token"
+        form_data = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        async with self.websession.post(url, data=form_data, headers=headers) as resp:
+            request_id = resp.headers.get("Request-Id")
+            retry_after: int | None = None
+            if "Retry-After" in resp.headers:
+                try:
+                    retry_after = int(resp.headers["Retry-After"])
+                except (ValueError, TypeError):
+                    pass
+
+            try:
+                body = await resp.json()
+            except Exception:
+                body = await resp.text()
+
+            if resp.status >= 400:
+                raise parse_problem_response(
+                    status=resp.status,
+                    data=body,
+                    request_id=request_id,
+                    retry_after=retry_after,
+                )
+
+            if isinstance(body, dict):
+                self.access_token = body.get("access_token")
+                expires_in = body.get("expires_in", 3600)
+                self.expires_at = time.time() + expires_in
+                self.scope = body.get("scope")
+                return body
+
+            raise MyWebLogError(f"Unexpected token response format: {body}")
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        **kwargs: Any,
+    ) -> dict[str, Any] | list[Any] | None:
+        """Execute an HTTP request, refreshing token and retrying once on 401."""
+        try:
+            return await super().request(method, path, **kwargs)
+        except MyWebLogAuthError:
+            logger.info(
+                "Access token rejected (401); fetching new token and retrying..."
+            )
+            async with self._refresh_lock:
+                self.access_token = None
+                self.expires_at = 0
+                await self._async_fetch_access_token()
+            return await super().request(method, path, **kwargs)

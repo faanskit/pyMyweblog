@@ -15,6 +15,8 @@ import aiohttp
 
 from pyMyweblog.auth import (
     AbstractMyWebLogAuth,
+    ClientCredentialsAuth,
+    MAIN_API_BASE_URL,
     OAuth2PKCEAuth,
     build_authorize_url,
     generate_pkce_pair,
@@ -393,3 +395,153 @@ class TestOAuth2PKCEAuth(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(auth.access_token)
         self.assertIsNone(auth.refresh_token)
         self.assertFalse(self.token_path.exists())
+
+
+class TestClientCredentialsAuth(unittest.IsolatedAsyncioTestCase):
+    """Test suite for OAuth 2.0 Client Credentials authentication (Main API)."""
+
+    def setUp(self) -> None:
+        self.session = AsyncMock(spec=aiohttp.ClientSession)
+        self.auth = ClientCredentialsAuth(
+            websession=self.session,
+            client_id="4711",
+            client_secret="mwla1_test_secret",
+            base_url=MAIN_API_BASE_URL,
+        )
+
+    async def test_fetch_access_token_success(self) -> None:
+        """Test successful token fetch via client_credentials grant."""
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.headers = {"Content-Type": "application/json"}
+        mock_resp.json = AsyncMock(
+            return_value={
+                "access_token": "mwlat_test_12345",
+                "expires_in": 3600,
+                "scope": "objects:r bookings:rw",
+                "token_type": "Bearer",
+            }
+        )
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_resp
+        self.session.post.return_value = mock_ctx
+
+        token = await self.auth.async_get_access_token()
+
+        self.assertEqual(token, "mwlat_test_12345")
+        self.assertEqual(self.auth.scope, "objects:r bookings:rw")
+        self.session.post.assert_called_once()
+        call_args = self.session.post.call_args
+        self.assertEqual(call_args[0][0], f"{MAIN_API_BASE_URL}/oauth/token")
+        self.assertEqual(
+            call_args[1]["data"],
+            {
+                "grant_type": "client_credentials",
+                "client_id": "4711",
+                "client_secret": "mwla1_test_secret",
+            },
+        )
+
+    async def test_reuse_valid_token(self) -> None:
+        """Test that a valid cached token is reused without extra HTTP request."""
+        self.auth.access_token = "valid_cached_token"
+        import time
+
+        self.auth.expires_at = time.time() + 1800  # valid for 30 more minutes
+
+        token = await self.auth.async_get_access_token()
+
+        self.assertEqual(token, "valid_cached_token")
+        self.session.post.assert_not_called()
+
+    async def test_token_refresh_when_expired(self) -> None:
+        """Test that an expired token triggers a new fetch."""
+        self.auth.access_token = "old_expired_token"
+        self.auth.expires_at = 1000.0  # past
+
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.headers = {"Content-Type": "application/json"}
+        mock_resp.json = AsyncMock(
+            return_value={
+                "access_token": "new_refreshed_token",
+                "expires_in": 3600,
+            }
+        )
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_resp
+        self.session.post.return_value = mock_ctx
+
+        token = await self.auth.async_get_access_token()
+
+        self.assertEqual(token, "new_refreshed_token")
+        self.session.post.assert_called_once()
+
+    async def test_auth_error_handling(self) -> None:
+        """Test that 401 raises MyWebLogAuthError."""
+        mock_resp = AsyncMock()
+        mock_resp.status = 401
+        mock_resp.headers = {"Content-Type": "application/json"}
+        mock_resp.json = AsyncMock(
+            return_value={
+                "error": "invalid_client",
+                "error_description": "The client id or secret is wrong",
+            }
+        )
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_resp
+        self.session.post.return_value = mock_ctx
+
+        with self.assertRaises(MyWebLogAuthError):
+            await self.auth.async_get_access_token()
+
+    async def test_request_retries_on_401(self) -> None:
+        """Test that request() refreshes token and retries when server returns 401."""
+        import time
+
+        self.auth.access_token = "stale_token"
+        self.auth.expires_at = time.time() + 1000
+
+        # First request call returns 401
+        resp_401 = AsyncMock()
+        resp_401.status = 401
+        resp_401.headers = {"Content-Type": "application/json"}
+        resp_401.json = AsyncMock(
+            return_value={
+                "error": "invalid_token",
+                "error_description": "Token expired",
+            }
+        )
+        ctx_401 = AsyncMock()
+        ctx_401.__aenter__.return_value = resp_401
+
+        # Token fetch call returns 200 with new token
+        resp_token = AsyncMock()
+        resp_token.status = 200
+        resp_token.headers = {"Content-Type": "application/json"}
+        resp_token.json = AsyncMock(
+            return_value={
+                "access_token": "fresh_token_after_401",
+                "expires_in": 3600,
+            }
+        )
+        ctx_token = AsyncMock()
+        ctx_token.__aenter__.return_value = resp_token
+
+        # Second request call returns 200 with data
+        resp_success = AsyncMock()
+        resp_success.status = 200
+        resp_success.headers = {"Content-Type": "application/json"}
+        resp_success.json = AsyncMock(return_value={"data": [{"id": 1}]})
+        ctx_success = AsyncMock()
+        ctx_success.__aenter__.return_value = resp_success
+
+        self.session.request.side_effect = [ctx_401, ctx_success]
+        self.session.post.return_value = ctx_token
+
+        result = await self.auth.request("GET", "/objects")
+
+        self.assertEqual(result, {"data": [{"id": 1}]})
+        self.assertEqual(self.auth.access_token, "fresh_token_after_401")
+        self.assertEqual(self.session.request.call_count, 2)
+        self.session.post.assert_called_once()

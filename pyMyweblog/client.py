@@ -1,4 +1,4 @@
-"""MyWebLog API client for Mobile API v5 (v5.25.0).
+"""MyWebLog API client for Mobile API v5 (v5.37.0) and Main API v5 (v5.19.0).
 
 This module provides the high-level MyWebLogClient class supporting OAuth 2.1
 authentication, typed endpoint methods, and legacy v3 backward-compatibility aliases.
@@ -11,8 +11,10 @@ Note on time_summary structure (from GET /objects?include=time_summary):
         "airborne_formatted": str,         # HH:MM string (e.g. "1004:35")
         "block": float | null,             # Decimal hours (e.g. 1006.91666)
         "block_formatted": str,            # HH:MM string (e.g. "1006:55")
-        "tach": float | int | null,        # Tach hours/meter (e.g. 1006 or 8001.3)
-        "tach_formatted": str,             # Formatted string (e.g. "1006.0")
+        "tachometer": float | int | null,  # Meter reading (e.g. 7054.1)
+        "tachometer_formatted": str,       # Formatted string (e.g. "7054.1")
+        "tach": float | int | null,        # Total tach time / gångtid (e.g. 4256.6)
+        "tach_formatted": str,             # Formatted string (e.g. "4256.6")
         "landings": int | null             # Integer landings count (e.g. 137)
     }
 }
@@ -27,7 +29,13 @@ from typing import Any
 
 import aiohttp
 
-from .auth import AbstractMyWebLogAuth, OAuth2PKCEAuth
+from .auth import (
+    AbstractMyWebLogAuth,
+    ClientCredentialsAuth,
+    DEFAULT_BASE_URL,
+    MAIN_API_BASE_URL,
+    OAuth2PKCEAuth,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +47,13 @@ class MyWebLogClient:
         self,
         auth: AbstractMyWebLogAuth | None = None,
         *,
+        api_mode: str = "mobile",
         client_id: str | int | None = None,
         client_secret: str | None = None,
         redirect_uri: str = "http://localhost:5173/callback",
         token_cache_path: str | Path | None = ".myweblog_tokens.json",
         websession: aiohttp.ClientSession | None = None,
-        base_url: str = "https://api.myweblog.se/mobile/v5",
+        base_url: str = DEFAULT_BASE_URL,
         language: str | None = None,
         # Legacy compatibility parameters
         username: str | None = None,
@@ -66,7 +75,7 @@ class MyWebLogClient:
             password: Legacy v3 password (ignored in v5 OAuth).
             app_token: Legacy v3 token (ignored in v5 OAuth).
         """
-        self.api_version = "5.25.0"
+        self.api_version = "5.37.0"
         self._owns_session = False
         self.websession = websession
         self.username = username
@@ -75,20 +84,48 @@ class MyWebLogClient:
         if auth is not None:
             self.auth = auth
             self.session = auth.websession
+            if (
+                api_mode == "mobile"
+                and hasattr(auth, "base_url")
+                and "/main/" in getattr(auth, "base_url", "")
+            ):
+                self.api_mode = "main"
+            else:
+                self.api_mode = api_mode
         else:
+            self.api_mode = api_mode
             if self.websession is None:
                 self.websession = aiohttp.ClientSession()
                 self._owns_session = True
             self.session = self.websession
-            self.auth = OAuth2PKCEAuth(
-                websession=self.websession,
-                client_id=client_id or "9",
-                client_secret=client_secret,
-                redirect_uri=redirect_uri,
-                token_cache_path=token_cache_path,
-                base_url=base_url,
-                language=language,
-            )
+
+            if self.api_mode == "main":
+                effective_base_url = (
+                    MAIN_API_BASE_URL
+                    if base_url
+                    in (
+                        DEFAULT_BASE_URL,
+                        "https://api.myweblog.se/mobile/v5",
+                    )
+                    else base_url
+                )
+                self.auth = ClientCredentialsAuth(
+                    websession=self.websession,
+                    client_id=client_id or "",
+                    client_secret=client_secret or "",
+                    base_url=effective_base_url,
+                    language=language,
+                )
+            else:
+                self.auth = OAuth2PKCEAuth(
+                    websession=self.websession,
+                    client_id=client_id or "9",
+                    client_secret=client_secret,
+                    redirect_uri=redirect_uri,
+                    token_cache_path=token_cache_path,
+                    base_url=base_url,
+                    language=language,
+                )
 
     async def __aenter__(self) -> MyWebLogClient:
         """Enter async context manager."""
@@ -116,6 +153,14 @@ class MyWebLogClient:
     # ==========================================
     # v5 REST Endpoints
     # ==========================================
+
+    async def get_token(self) -> dict[str, Any]:
+        """Fetch token info, rights, and organization (GET /token).
+
+        Available in Main API.
+        """
+        res = await self.auth.request("GET", "/token")
+        return res if isinstance(res, dict) else {"data": res}
 
     async def get_client(self) -> dict[str, Any]:
         """Fetch client info, module rights, and rate limits (GET /client)."""
@@ -156,13 +201,41 @@ class MyWebLogClient:
             include: Comma-separated list of extras:
                      "status,active_remarks,time_summary,disclaimer"
         """
-        params: dict[str, Any] = {"include": include}
+        effective_include = include
+        if self.api_mode == "main" and effective_include:
+            parts = [
+                p.strip()
+                for p in effective_include.split(",")
+                if p.strip() and p.strip() != "disclaimer"
+            ]
+            effective_include = ",".join(parts)
+
+        params: dict[str, Any] = {}
+        if effective_include:
+            params["include"] = effective_include
         params.update(kwargs)
+
         res = await self.auth.request("GET", "/objects", params=params)
         result = res if isinstance(res, dict) else {"data": res}
+
         # Provide backwards-compatible 'Object' alias key
         if "data" in result and "Object" not in result:
             result["Object"] = result["data"]
+
+        # Normalize object models for Main API (map type_name/type_designator -> model)
+        data_list = result.get("data")
+        if isinstance(data_list, list):
+            for obj in data_list:
+                if isinstance(obj, dict):
+                    if "model" not in obj or obj.get("model") is None:
+                        type_name = obj.get("type_name")
+                        type_desig = obj.get("type_designator")
+                        if type_name or type_desig:
+                            obj["model"] = {
+                                "name": type_name,
+                                "designator": type_desig,
+                            }
+
         return result
 
     async def get_bookings(
@@ -193,13 +266,17 @@ class MyWebLogClient:
                 else str(date_to)
             )
         if mine:
-            params["mine"] = "true"
+            if self.api_mode == "main":
+                logger.debug("Main API does not support 'mine' parameter; skipping.")
+            else:
+                params["mine"] = "true"
         if limit is not None:
             params["limit"] = limit
         if offset is not None:
             params["offset"] = offset
         if exclude is not None:
             params["exclude"] = exclude
+        params.update(kwargs)
 
         res = await self.auth.request("GET", "/bookings", params=params)
         result = res if isinstance(res, dict) else {"data": res}
@@ -218,6 +295,10 @@ class MyWebLogClient:
         booking_type: str | None = None,
         booking_type_id: int | None = None,
         reminders: dict[str, bool] | None = None,
+        owner_id: int | None = None,
+        student_id: int | None = None,
+        instructor_id: int | None = None,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Create a new booking (POST /bookings)."""
         payload: dict[str, Any] = {
@@ -237,6 +318,13 @@ class MyWebLogClient:
             payload["booking_type_id"] = int(booking_type_id)
         if reminders is not None:
             payload["reminders"] = reminders
+        if owner_id is not None:
+            payload["owner_id"] = int(owner_id)
+        if student_id is not None:
+            payload["student_id"] = int(student_id)
+        if instructor_id is not None:
+            payload["instructor_id"] = int(instructor_id)
+        payload.update(kwargs)
 
         res = await self.auth.request("POST", "/bookings", json=payload)
         return res if isinstance(res, dict) else {"data": res}
@@ -262,9 +350,11 @@ class MyWebLogClient:
         date_from: date | str | None = None,
         date_to: date | str | None = None,
         mine: bool = False,
+        simulator: bool | None = None,
         limit: int = 20,
         offset: int = 0,
         order: str = "asc",
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Fetch flight logs (GET /flightlogs)."""
         params: dict[str, Any] = {
@@ -287,7 +377,13 @@ class MyWebLogClient:
                 else str(date_to)
             )
         if mine:
-            params["mine"] = "true"
+            if self.api_mode == "main":
+                logger.debug("Main API does not support 'mine' parameter; skipping.")
+            else:
+                params["mine"] = "true"
+        if simulator is not None:
+            params["simulator"] = "true" if simulator else "false"
+        params.update(kwargs)
 
         res = await self.auth.request("GET", "/flightlogs", params=params)
         result = res if isinstance(res, dict) else {"data": res}

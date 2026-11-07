@@ -349,3 +349,113 @@ class TestMyWebLogClientV5(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(standalone_client._owns_session)
             await standalone_client.close()
             mock_session.close.assert_called_once()
+
+    async def test_get_token_main_api(self) -> None:
+        """Test GET /token for Main API."""
+        self.auth.request.return_value = {
+            "data": {
+                "description": "Home Assistant",
+                "organization": {"id": 3, "name": "Kalmar FK"},
+                "owner": {"id": 17, "name": "Anna Berg"},
+                "rights": {"objects": "r", "bookings": "rw"},
+            }
+        }
+        res = await self.client.get_token()
+        self.auth.request.assert_called_with("GET", "/token")
+        self.assertEqual(res["data"]["description"], "Home Assistant")
+        self.assertEqual(res["data"]["organization"]["name"], "Kalmar FK")
+        self.assertEqual(res["data"]["rights"]["objects"], "r")
+
+    async def test_get_objects_main_api_normalization_and_disclaimer(self) -> None:
+        """Test model normalization and disclaimer filtering in Main API mode."""
+        main_client = MyWebLogClient(auth=self.auth, api_mode="main")
+        self.auth.request.return_value = {
+            "data": [
+                {
+                    "id": 24,
+                    "registration": "SE-ABC",
+                    "type_name": "Cessna 172 Skyhawk",
+                    "type_designator": "C172",
+                }
+            ]
+        }
+
+        # Request with disclaimer included
+        res = await main_client.get_objects(
+            include="status,active_remarks,disclaimer,time_summary"
+        )
+
+        # Verify disclaimer was stripped from params sent to Main API
+        self.auth.request.assert_called_with(
+            "GET",
+            "/objects",
+            params={"include": "status,active_remarks,time_summary"},
+        )
+
+        # Verify model was synthesized from type_name / type_designator
+        obj = res["data"][0]
+        self.assertIn("model", obj)
+        self.assertEqual(obj["model"]["name"], "Cessna 172 Skyhawk")
+        self.assertEqual(obj["model"]["designator"], "C172")
+
+    async def test_get_bookings_main_api_mine_suppressed(self) -> None:
+        """Test that 'mine' parameter is ignored in Main API mode."""
+        main_client = MyWebLogClient(auth=self.auth, api_mode="main")
+        self.auth.request.return_value = {"data": []}
+
+        await main_client.get_bookings(object_id=24, mine=True, date_from="2026-11-07")
+
+        # mine=True should not be present in params
+        self.auth.request.assert_called_with(
+            "GET",
+            "/bookings",
+            params={"object_id": 24, "date_from": "2026-11-07"},
+        )
+
+    async def test_get_flight_logs_main_api_and_simulator(self) -> None:
+        """Test simulator parameter and suppression of mine in Main API mode."""
+        main_client = MyWebLogClient(auth=self.auth, api_mode="main")
+        self.auth.request.return_value = {"data": []}
+
+        await main_client.get_flight_logs(
+            object_id=24, mine=True, simulator=True, limit=10
+        )
+
+        self.auth.request.assert_called_with(
+            "GET",
+            "/flightlogs",
+            params={
+                "limit": 10,
+                "offset": 0,
+                "order": "asc",
+                "object_id": 24,
+                "simulator": "true",
+            },
+        )
+
+    async def test_create_booking_with_owner_id(self) -> None:
+        """Test create_booking with owner_id, student_id, instructor_id."""
+        self.auth.request.return_value = {"id": 888}
+        res = await self.client.create_booking(
+            object_id=24,
+            start_at="2026-11-07T12:00:00Z",
+            end_at="2026-11-07T14:00:00Z",
+            owner_id=5,
+            student_id=9,
+            instructor_id=12,
+            comment="School flight",
+        )
+        self.auth.request.assert_called_with(
+            "POST",
+            "/bookings",
+            json={
+                "object_id": 24,
+                "start_at": "2026-11-07T12:00:00Z",
+                "end_at": "2026-11-07T14:00:00Z",
+                "comment": "School flight",
+                "owner_id": 5,
+                "student_id": 9,
+                "instructor_id": 12,
+            },
+        )
+        self.assertEqual(res["id"], 888)

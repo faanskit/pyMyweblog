@@ -19,10 +19,11 @@ REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from pyMyweblog.auth import OAuth2PKCEAuth  # noqa: E402
+from pyMyweblog.auth import ClientCredentialsAuth, OAuth2PKCEAuth  # noqa: E402
 from pyMyweblog.client import MyWebLogClient  # noqa: E402
 
 AVAILABLE_OPERATIONS = [
+    ("GetToken", "get_token", "-k"),
     ("GetObjects", "get_objects", "-o"),
     ("GetBookings", "get_bookings", "-b"),
     ("GetMe", "get_me", "-m"),
@@ -120,7 +121,11 @@ def select_airplane_sync(
 
 async def run_operation(client: MyWebLogClient, op: str) -> None:
     """Run an individual API operation."""
-    if op in ("get_objects", "getObjects"):
+    if op in ("get_token", "GetToken"):
+        result = await client.get_token()
+        print(f"Result for {op}:")
+        pprint(result)
+    elif op in ("get_objects", "getObjects"):
         result = await client.get_objects()
         print(f"Result for {op}:")
         pprint(result)
@@ -169,7 +174,7 @@ async def run_operation(client: MyWebLogClient, op: str) -> None:
         print(f"Unknown operation: {op}")
 
 
-async def main(selected_ops: list[str]) -> None:
+async def main(selected_ops: list[str], api_mode: str = "mobile") -> None:
     """Main CLI entrypoint."""
     load_env()
     client_id = os.getenv("MYWEBLOG_CLIENT_ID", "9")
@@ -178,25 +183,46 @@ async def main(selected_ops: list[str]) -> None:
     token_cache_path = REPO_ROOT / ".myweblog_tokens.json"
 
     async with aiohttp.ClientSession() as session:
-        auth = OAuth2PKCEAuth(
-            websession=session,
-            client_id=client_id,
-            client_secret=client_secret,
-            redirect_uri=redirect_uri,
-            token_cache_path=token_cache_path,
-        )
+        if api_mode == "main":
+            print("[Main API] Using Client Credentials authentication...")
+            if not client_secret:
+                print("Error: MYWEBLOG_CLIENT_SECRET must be set for Main API mode.")
+                sys.exit(1)
+            auth = ClientCredentialsAuth(
+                websession=session,
+                client_id=client_id,
+                client_secret=client_secret,
+            )
+            client = MyWebLogClient(auth=auth, api_mode="main")
+        else:
+            auth = OAuth2PKCEAuth(
+                websession=session,
+                client_id=client_id,
+                client_secret=client_secret,
+                redirect_uri=redirect_uri,
+                token_cache_path=token_cache_path,
+            )
+            if not auth.refresh_token:
+                print("[OAuth] No valid token found. Starting browser login...")
+                await auth.async_interactive_login()
+            client = MyWebLogClient(auth=auth, api_mode="mobile")
 
-        if not auth.refresh_token:
-            print("[OAuth] No valid token found. Starting browser login...")
-            await auth.async_interactive_login()
-
-        client = MyWebLogClient(auth=auth)
         for op in selected_ops:
-            await run_operation(client, op)
+            if api_mode == "main" and op in ("get_me", "getBalance", "GetMe"):
+                print("Note: GET /me not in Main API; running get_token.")
+                await run_operation(client, "get_token")
+            else:
+                await run_operation(client, op)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MyWebLog API v5 Utility")
+    parser.add_argument(
+        "--api-mode",
+        choices=["mobile", "main"],
+        default=os.getenv("MYWEBLOG_API_MODE", "mobile"),
+        help="API mode: 'mobile' (OAuth 2.1 PKCE) or 'main' (Client Credentials)",
+    )
     for op_name, op_func, short_code in AVAILABLE_OPERATIONS:
         parser.add_argument(
             short_code,
@@ -224,7 +250,7 @@ if __name__ == "__main__":
         selected = [AVAILABLE_OPERATIONS[menu_choices.index(sel)][1] for sel in answer]
 
     try:
-        asyncio.run(main(selected))
+        asyncio.run(main(selected, api_mode=args.api_mode))
     except KeyboardInterrupt:
         print("\nCancelled by user.")
         sys.exit(0)

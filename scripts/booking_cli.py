@@ -18,7 +18,7 @@ REPO_ROOT = SCRIPT_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from pyMyweblog.auth import OAuth2PKCEAuth  # noqa: E402
+from pyMyweblog.auth import ClientCredentialsAuth, OAuth2PKCEAuth  # noqa: E402
 from pyMyweblog.client import MyWebLogClient  # noqa: E402
 from pyMyweblog.exceptions import MyWebLogError  # noqa: E402
 
@@ -145,7 +145,7 @@ def prompt_new_booking() -> tuple[datetime, datetime] | tuple[None, None]:
         return None, None
 
 
-async def main() -> None:
+async def main(api_mode: str = "mobile") -> None:
     """Main interactive booking loop."""
     load_env()
     client_id = os.getenv("MYWEBLOG_CLIENT_ID", "9")
@@ -154,30 +154,49 @@ async def main() -> None:
     token_cache_path = REPO_ROOT / ".myweblog_tokens.json"
 
     async with aiohttp.ClientSession() as session:
-        auth = OAuth2PKCEAuth(
-            websession=session,
-            client_id=client_id,
-            client_secret=client_secret,
-            redirect_uri=redirect_uri,
-            token_cache_path=token_cache_path,
-        )
+        token_owner_id = None
+        if api_mode == "main":
+            print("[Main API] Using Client Credentials authentication...")
+            if not client_secret:
+                print("Error: MYWEBLOG_CLIENT_SECRET must be set for Main API mode.")
+                sys.exit(1)
+            auth = ClientCredentialsAuth(
+                websession=session,
+                client_id=client_id,
+                client_secret=client_secret,
+            )
+            client = MyWebLogClient(auth=auth, api_mode="main")
+            token_resp = await client.get_token()
+            token_data = token_resp.get("data", token_resp)
+            owner_obj = token_data.get("owner") or {}
+            fullname = owner_obj.get("name") or "Main API User"
+            token_owner_id = owner_obj.get("id")
+            org_obj = token_data.get("organization") or {}
+            org_name = org_obj.get("name") or "Organization"
+            print(f"\nWelcome, {fullname}! (Connected to {org_name} via Main API)")
+        else:
+            auth = OAuth2PKCEAuth(
+                websession=session,
+                client_id=client_id,
+                client_secret=client_secret,
+                redirect_uri=redirect_uri,
+                token_cache_path=token_cache_path,
+            )
+            if not auth.refresh_token:
+                print("[OAuth] No valid token found. Starting browser login...")
+                await auth.async_interactive_login()
+            client = MyWebLogClient(auth=auth, api_mode="mobile")
 
-        if not auth.refresh_token:
-            print("[OAuth] No valid token found. Starting browser login...")
-            await auth.async_interactive_login()
-
-        client = MyWebLogClient(auth=auth)
-
-        # 1. Fetch user info
-        me_resp = await client.get_me()
-        user_data = me_resp.get("data", me_resp)
-        name_obj = user_data.get("name") or {}
-        fullname = (
-            name_obj.get("full")
-            if isinstance(name_obj, dict)
-            else user_data.get("username", "Member")
-        )
-        print(f"\nWelcome, {fullname}!")
+            # 1. Fetch user info
+            me_resp = await client.get_me()
+            user_data = me_resp.get("data", me_resp)
+            name_obj = user_data.get("name") or {}
+            fullname = (
+                name_obj.get("full")
+                if isinstance(name_obj, dict)
+                else user_data.get("username", "Member")
+            )
+            print(f"\nWelcome, {fullname}!")
 
         # 2. Fetch airplanes
         objects_resp = await client.get_objects()
@@ -247,12 +266,24 @@ async def main() -> None:
 
                     comment = ask_text("Comment (optional):")
                     print(f"Creating booking for {reg} ({b_start} -> {b_end})...")
+                    kwargs: dict[str, Any] = {}
+                    if api_mode == "main":
+                        owner_prompt = (
+                            f"Member/Owner ID for booking [{token_owner_id}]:"
+                        )
+                        owner_input = ask_text(
+                            owner_prompt, default=str(token_owner_id or "")
+                        )
+                        if owner_input:
+                            kwargs["owner_id"] = int(owner_input)
+
                     try:
                         res = await client.create_booking(
                             object_id=airplane_id,
                             start_at=b_start,
                             end_at=b_end,
                             comment=comment or None,
+                            **kwargs,
                         )
                         print("Booking successfully created!")
                         if "messages" in res:
@@ -315,8 +346,19 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Interactive MyWebLog Booking CLI")
+    parser.add_argument(
+        "--api-mode",
+        choices=["mobile", "main"],
+        default=os.getenv("MYWEBLOG_API_MODE", "mobile"),
+        help="Select API mode: 'mobile' (default) or 'main'",
+    )
+    args = parser.parse_args()
+
     try:
-        asyncio.run(main())
+        asyncio.run(main(api_mode=args.api_mode))
     except KeyboardInterrupt:
         print("\nCancelled by user.")
         sys.exit(0)
